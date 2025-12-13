@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/repository"
 	"github.com/dhanarrizky/Golang-template/pkg/utils"
 )

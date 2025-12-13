@@ -3,7 +3,7 @@
 # ===========================
 # Default old text (shown to the user)
 # ===========================
-OLD_TEXT="github.com/dhanarrizky/go-template"
+OLD_TEXT="github.com/dhanarrizky/Golang-template"
 
 echo "Current old text to replace:"
 echo "→ $OLD_TEXT"

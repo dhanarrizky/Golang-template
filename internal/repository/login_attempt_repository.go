@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 )
 
 type LoginAttemptRepository interface {

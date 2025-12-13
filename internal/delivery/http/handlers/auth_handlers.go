@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/config"
 	"github.com/dhanarrizky/Golang-template/pkg/utils"
 	"github.com/dhanarrizky/Golang-template/pkg/auth"

@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/repository"
 )
 

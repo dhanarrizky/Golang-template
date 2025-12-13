@@ -1,9 +1,9 @@
-package postgres
+package auth
 
 import (
 	"context"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/repository"
 	"gorm.io/gorm"
 )
