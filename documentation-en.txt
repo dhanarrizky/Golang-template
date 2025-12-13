@@ -1,0 +1,386 @@
+📘 README.md — Project Documentation
+    github.com/dhanarrizky/Golang-template – Project Structure Documentation
+
+    This documentation explains the project structure, the purpose of each layer, and the overall application architecture.
+    The application follows Clean Architecture / Hexagonal Architecture, with a clear separation between domain, usecase, delivery, and infrastructure layers.
+
+📂 Project Structure
+    github.com/dhanarrizky/Golang-template/
+    ├── cmd/
+    │   └── app/
+    │       └── main.go
+    ├── internal/
+    │   ├── config/
+    │   │   └── config.go
+    │   ├── domain/
+    │   │   ├── entities/
+    │   │   │   └── user.go
+    │   │   └── valueobjects/
+    │   ├── repository/
+    │   │   └── user_repository.go
+    │   ├── usecase/
+    │   │   └── user/
+    │   │       ├── get_user.go
+    │   │       ├── create_user.go
+    │   │       └── delete_user.go
+    │   ├── delivery/
+    │   │   └── http/
+    │   │       ├── handlers/
+    │   │       ├── middleware/
+    │   │       └── routes.go
+    │   └── infrastructure/
+    │       ├── database/
+    │       │   ├── postgres/
+    │       │   ├── mysql/
+    │       │   └── mongo/
+    │       └── cache/
+    │           └── redis.go
+    ├── pkg/
+    │   └── utils/
+    │       └── error.go
+    ├── migrations/
+    ├── scripts/
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── .env
+    ├── go.mod
+    └── README.md
+
+🧠 Explanation of Each Folder
+    📁 cmd/
+
+        Location of the application entrypoint.
+
+        cmd/app/main.go is the main file to start the application.
+
+        Responsibilities:
+
+            Load environment variables & configuration
+
+            Initialize logger
+
+            Connect to database and Redis
+
+            Register repositories & usecases
+
+            Set up HTTP router
+
+            Start server with graceful shutdown
+
+    ⚠️ No business logic is allowed here.
+
+    📁 internal/
+
+        Contains the core application code.
+        Go prevents external modules from importing internal/, ensuring a clean architecture.
+
+    📁 internal/config/
+
+        config.go handles:
+
+            Reading .env, YAML, or other configs
+
+            Validating configuration values
+
+            Providing configuration struct for other layers
+
+    📁 internal/domain/
+
+        The pure domain layer (core business rules).
+
+        Must NOT import:
+
+            ❌ Gin / Echo / Fiber
+
+            ❌ SQL / GORM
+
+            ❌ Infrastructure
+
+        entities/
+
+            Contains domain entities such as:
+
+                User
+
+                Order
+
+                Product
+
+            Responsibilities:
+
+                Business rules
+
+                Domain behavior
+
+                Basic validation
+
+        valueobjects/
+
+            Contains immutable objects that represent specific concepts:
+
+                Email
+
+                Money
+
+                PhoneNumber
+
+    📁 internal/repository/
+
+        Contains repository interfaces (Ports).
+
+        Purpose:
+
+            Define the required data access operations
+
+            Free from technical implementation details
+
+        Common methods:
+
+            GetByID
+
+            Create
+
+            Delete
+
+    ⚠️ Must not contain SQL or GORM code.
+        Concrete implementations exist in the infrastructure/ directory.
+
+    📁 internal/usecase/
+
+        Contains usecase implementations (Interactors).
+
+        Examples:
+
+            get_user.go
+
+            create_user.go
+
+            delete_user.go
+
+        Responsibilities:
+
+            Receive input from handlers
+
+            Apply business rules
+
+            Access repository interfaces
+
+            Return entity/DTO output
+
+    ⚠️ Must NOT import Gin, SQL, GORM, etc.
+
+    📁 internal/delivery/http/
+
+        The outermost layer handling the HTTP transport.
+
+        handlers/
+
+            Responsible for:
+
+                Binding JSON → input struct
+
+                Validating input
+
+                Calling usecase
+
+                Return JSON response
+
+        middleware/
+
+            Reusable HTTP middleware:
+
+                Authentication
+
+                Logging
+
+                CORS
+
+                Rate limiting
+
+                Panic recovery
+
+                routes.go
+
+            Responsible for route configuration & grouping:
+
+                /v1/user
+
+                /v2/user
+
+            Registers:
+
+                Handlers
+
+                Middleware
+
+    📁 internal/infrastructure/
+
+        Contains concrete implementations (Adapters):
+
+            Database
+
+            Cache
+
+            External services
+
+        database/
+
+        Separated by database type:
+
+            postgres/
+
+            mysql/
+
+            mongo/
+
+            Contains real implementations of repository interfaces.
+
+            cache/redis.go
+
+        Includes:
+
+            Redis client initialization
+
+            Helper functions (Set, Get, TTL)
+
+        Useful for:
+
+            Caching
+
+            Rate limiting
+
+    📁 pkg/
+
+        Public reusable packages available for external modules.
+
+        utils/error.go
+
+        Contains:
+
+            Error helpers
+
+            Custom error types
+
+            Error wrappers
+
+    📁 migrations/
+
+        Contains SQL migration files for tools like:
+
+            Goose
+
+            Flyway
+
+            Migrate
+
+        Examples:
+
+            001_create_users_table.sql
+            002_add_index.sql
+
+    📁 scripts/
+
+        Contains automation scripts:
+
+            Local setup
+
+            Deployment
+
+            Testing
+
+            Docker build
+
+    🐳 Dockerfile
+
+        Defines how the application is built into a Docker image.
+
+        Typically uses:
+
+            Multi-stage builds
+
+            Image size optimizations
+
+    🐳 docker-compose.yml
+
+        Local development environment:
+
+            Go App
+
+            PostgreSQL / MySQL
+
+            Redis
+
+            Adminer / pgAdmin
+
+    🔐 .env
+
+        Contains environment variables:
+
+            DATABASE_URL
+
+            REDIS_HOST
+            
+            APP_PORT
+            
+            JWT_SECRET
+
+
+    ⚠️ Never commit this file to Git.
+
+    📦 go.mod
+
+        Defines the Go module and dependencies.
+
+    📘 README.md
+
+        Main documentation:
+
+            How to run the application
+
+            Architecture details
+
+            API documentation
+
+Developer guidelines
+
+🚀 How to Run the Application
+    1. Clone the repository
+        git clone <repo-url>
+        cd github.com/dhanarrizky/Golang-template
+
+    2. Copy environment example
+        cp .env.example .env
+
+    3. Start Docker services
+        docker-compose up -d
+
+    4. Run the application
+        go run cmd/app/main.go
+
+🧱 Architecture Overview
+
+    This application follows:
+
+        Clean Architecture
+
+        SOLID
+
+        Hexagonal Architecture
+
+        Dependency Inversion
+
+    Data Flow:
+    
+        HTTP → Handler → Usecase → Repository Interface → Repository Implementation → Database
+
+🎯 Benefits of This Structure
+
+    Easy to switch databases (Postgres → MySQL → Mongo)
+
+    Highly testable (all dependencies are injected)
+
+    Framework-agnostic
+
+    Clean, scalable, and maintainable
+
+    Clear separation of concerns

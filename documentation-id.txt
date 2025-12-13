@@ -1,0 +1,389 @@
+📘 README.md — Project Documentation (Bahasa Indonesia)
+    github.com/dhanarrizky/Golang-template – Project Structure Documentation
+
+    Dokumentasi ini menjelaskan struktur folder, tujuan setiap layer, dan arsitektur aplikasi secara keseluruhan.
+    Aplikasi ini mengikuti pola Clean Architecture / Hexagonal Architecture, dengan pemisahan yang jelas antara domain, usecase, delivery, dan infrastructure.
+
+📂 Struktur Proyek
+    github.com/dhanarrizky/Golang-template/
+    ├── cmd/
+    │   └── app/
+    │       └── main.go
+    ├── internal/
+    │   ├── config/
+    │   │   └── config.go
+    │   ├── domain/
+    │   │   ├── entities/
+    │   │   │   └── user.go
+    │   │   └── valueobjects/
+    │   ├── repository/
+    │   │   └── user_repository.go
+    │   ├── usecase/
+    │   │   └── user/
+    │   │       ├── get_user.go
+    │   │       ├── create_user.go
+    │   │       └── delete_user.go
+    │   ├── delivery/
+    │   │   └── http/
+    │   │       ├── handlers/
+    │   │       ├── middleware/
+    │   │       └── routes.go
+    │   └── infrastructure/
+    │       ├── database/
+    │       │   ├── postgres/
+    │       │   ├── mysql/
+    │       │   └── mongo/
+    │       └── cache/
+    │           └── redis.go
+    ├── pkg/
+    │   └── utils/
+    │       └── error.go
+    ├── migrations/
+    ├── scripts/
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── .env
+    ├── go.mod
+    └── README.md
+
+🧠 Penjelasan Setiap Folder
+    📁 cmd/
+
+        Tempat entrypoint aplikasi.
+
+        cmd/app/main.go
+
+        File utama untuk menjalankan aplikasi.
+
+        Tanggung jawab:
+
+            Load environment & configuration
+
+            Inisialisasi logger
+
+            Koneksi database dan Redis
+
+            Mendaftarkan repository & usecase
+
+            Menyiapkan router HTTP
+
+            Menjalankan server dengan graceful shutdown
+
+    ⚠️ Tidak boleh ada logika bisnis.
+
+    📁 internal/
+
+        Berisi kode inti aplikasi.
+        Go melarang folder internal/ digunakan dari luar module — memastikan arsitektur tetap bersih.
+
+    📁 internal/config/
+        config.go
+
+        Mengurus semua konfigurasi aplikasi:
+
+            Membaca .env, YAML, atau konfigurasi lain
+
+            Validasi nilai konfigurasi
+
+            Menyediakan struct konfigurasi yang siap digunakan layer lain
+
+    📁 internal/domain/
+
+        Layer domain murni (business logic paling dasar).
+
+        Tidak boleh ada import:
+        
+            ❌ Gin
+
+            ❌ SQL / GORM
+            
+            ❌ Infrastruktur
+
+        entities/
+
+            Contoh:
+
+                User
+
+                Order
+
+                Product
+
+            Di sini berisi:
+
+                Aturan business entity
+
+                Behavior domain
+
+                Validasi sederhana
+
+        valueobjects/
+
+            Objek kecil yang merepresentasikan konsep tertentu, contoh:
+
+                Email
+
+                Money
+
+                PhoneNumber
+
+            Value object biasanya bersifat immutable.
+
+    📁 internal/repository/
+
+        Berisi interface repository (PORT).
+
+        Tujuan:
+
+            Mendefinisikan kebutuhan akses data
+
+            Tanpa implementasi teknis
+
+        Contoh method umum:
+
+            GetByID
+
+            Create
+
+            Delete
+
+    ⚠️ Tidak boleh mengandung SQL atau GORM.
+        Implementasi repository berada di folder infrastructure/.
+
+    📁 internal/usecase/
+
+        Berisi implementasi usecase / interactor.
+
+        Contoh file:
+
+            get_user.go
+
+            create_user.go
+
+            delete_user.go
+
+        Tanggung jawab:
+
+            Menerima input dari handler
+
+            Menerapkan aturan bisnis
+
+            Mengakses repository interface
+
+            Mengembalikan entity/DTO sebagai output
+
+    ⚠️ Tidak boleh import Gin, SQL, GORM, dll.
+
+    📁 internal/delivery/http/
+
+        Layer paling luar yang menangani transport HTTP.
+
+        handlers/
+
+            Berisi semua handler untuk HTTP endpoint.
+
+            Fungsi utama:
+
+                Bind JSON → struct input
+
+                Validasi input
+
+                Panggil usecase
+
+                Mengembalikan response JSON
+
+        middleware/
+
+            Kumpulan middleware reusable:
+
+                Auth
+
+                Logging
+
+                CORS
+
+                Rate limiter
+
+                Recovery panic
+
+                routes.go
+
+            Mengatur routing & grouping:
+
+                /v1/user
+
+                /v2/user
+
+            Dapat melakukan registrasi:
+
+                Handler
+
+                Middleware
+
+    📁 internal/infrastructure/
+
+        Implementasi nyata (adapters) dari:
+
+            Database
+
+            Cache
+
+            External services
+
+        database/
+
+        Dipisah per jenis database:
+
+            postgres/
+
+            mysql/
+
+            mongo/
+
+            Di sini terdapat implementasi konkret dari repository interface.
+
+            cache/redis.go
+
+        Berisi:
+
+            Inisialisasi Redis client
+
+            Fungsi helper (Set, Get, TTL)
+
+            Bisa digunakan untuk rate limit & caching
+
+    📁 pkg/
+
+        Berisi package umum yang boleh digunakan oleh project lain.
+
+        utils/error.go
+
+        Berisi:
+
+            Error helper
+
+            Custom error type
+
+            Error wrapper
+
+    📁 migrations/
+
+        Berisi file SQL migration.
+        Digunakan untuk:
+
+            Goose
+
+            Flyway
+
+            Migrate tools
+
+        Contoh:
+
+            001_create_users_table.sql
+            002_add_index.sql
+
+    📁 scripts/
+
+        Berisi script otomatisasi seperti:
+
+            Setup project lokal
+
+            Deployment
+
+            Testing
+
+            Build Docker image
+
+    🐳 Dockerfile
+
+        Mengatur bagaimana aplikasi dibuild menjadi Docker image.
+
+        Biasanya menggunakan:
+
+            Multi-stage build
+
+            Optimasi ukuran image
+
+    🐳 docker-compose.yml
+
+        Environment untuk development.
+
+        Biasanya menjalankan:
+
+            Go App
+
+            PostgreSQL / MySQL
+
+            Redis
+
+            Adminer / pgAdmin
+
+    🔐 .env
+
+        Berisi environment variable seperti:
+
+            DATABASE_URL
+
+            REDIS_HOST
+
+            APP_PORT
+
+            JWT_SECRET
+
+    ⚠️ Jangan commit file ini ke Git repositori.
+
+    📦 go.mod
+
+        Berisi definisi module dan dependency Go.
+
+    📘 README.md
+
+        Dokumentasi utama:
+
+            Cara menjalankan aplikasi
+
+            Arsitektur sistem
+
+            API Docs
+
+Panduan developer
+
+🚀 Cara Menjalankan Aplikasi
+    1. Clone repository
+        git clone <repo-url>
+        cd github.com/dhanarrizky/Golang-template
+
+    2. Copy file .env.example ke .env
+        cp .env.example .env
+
+    3. Jalankan Docker
+        docker-compose up -d
+
+    4. Jalankan aplikasi
+        go run cmd/app/main.go
+
+🧱 Arsitektur yang Digunakan
+
+    Aplikasi ini menggunakan prinsip:
+
+        Clean Architecture
+
+        SOLID
+
+        Hexagonal Architecture
+
+        Dependency Inversion
+
+    Flow data:
+
+        HTTP → Handler → Usecase → Repository Interface → Repository Implementation → DB
+
+🎯 Keunggulan Struktur Ini
+
+    Mudah diganti database (Postgres → MySQL → Mongo)
+
+    Mudah lakukan testing (semua dependensi di-inject)
+
+    Tidak terikat framework
+
+    Rapi, scalable, dan maintainable

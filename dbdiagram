@@ -1,0 +1,84 @@
+// ====================
+// AUTHENTICATION ERD - JWT + Refresh Token Rotation (2025 Best Practice)
+// ====================
+
+Table users {
+  id uuid [pk, increment] // atau bigint
+  email varchar [unique, not null]
+  email_verified boolean [default: false]
+  password_hash varchar [not null] // Argon2id hash
+  name varchar
+  role varchar [default: 'user'] // admin, user, etc
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+  deleted_at timestamp [null] // soft delete
+}
+
+Table refresh_token_families {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  revoked_at timestamp [null] // jika null = masih aktif semua token di family ini
+  created_at timestamp [default: `now()`]
+  note: "Digunakan untuk kill all sessions sekaligus dengan cepat"
+}
+
+Table refresh_tokens {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > users.id, not null]
+  family_id uuid [ref: > refresh_token_families.id, not null] // untuk grouping
+  token_hash varchar [not null] // Argon2id hash dari refresh token
+  expires_at timestamp [not null]
+  created_at timestamp [default: `now()`]
+  revoked_at timestamp [null] // jika dicuri → langsung revoke
+  ip_address varchar [null]
+  user_agent text [null]
+  
+  Indexes {
+    (user_id, family_id)
+    token_hash [unique] // penting untuk reuse detection
+    expires_at
+  }
+}
+
+Table password_reset_tokens {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  token_hash varchar [not null, unique] // Argon2id hash
+  expires_at timestamp [not null]
+  used boolean [default: false]
+  created_at timestamp [default: `now()`]
+}
+
+Table email_verification_tokens {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  token_hash varchar [not null, unique]
+  expires_at timestamp [not null]
+  created_at timestamp [default: `now()`]
+}
+
+// Opsional: untuk keamanan ekstra
+Table login_attempts {
+  id bigint [pk, increment]
+  email varchar
+  ip_address varchar
+  user_agent text
+  success boolean
+  created_at timestamp [default: `now()`]
+  
+  Indexes {
+    email
+    ip_address
+    created_at
+  }
+}
+
+Table user_sessions {
+  id uuid [pk]
+  user_id uuid [ref: > users.id]
+  ip_address varchar
+  user_agent text
+  login_at timestamp
+  last_seen_at timestamp
+  logout_at timestamp [null]
+}
