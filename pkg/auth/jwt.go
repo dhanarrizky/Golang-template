@@ -68,28 +68,6 @@ func (s *Signer) NewRefreshToken(userID string, jti string) (string, *TokenClaim
 	return signed, claims, err
 }
 
-// func (s *Signer) ParseToken(tokenStr string) (*TokenClaims, error) {
-// 	claims := &TokenClaims{}
-// 	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
-// 	_, err := parser.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (any, error) {
-// 		return s.Secret, nil
-// 	})
-// 	if err != nil {
-// 		var verr *jwt.ValidationError
-// 		if errors.As(err, &verr) {
-// 			// expired or invalid
-// 			return nil, err
-// 		}
-// 		return nil, err
-// 	}
-// 	// optionally validate Issuer/Audience
-// 	if claims.Issuer != s.Issuer {
-// 		return nil, errors.New("invalid issuer")
-// 	}
-// 	// Audience can be validated if desired
-// 	return claims, nil
-// }
-
 func (s *Signer) ParseToken(tokenStr string) (*TokenClaims, error) {
 	claims := &TokenClaims{}
 	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
