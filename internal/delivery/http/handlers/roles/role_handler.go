@@ -7,7 +7,7 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/dhanarrizky/Golang-template/internal/delivery/http/dto"
-	"github.com/dhanarrizky/Golang-template/internal/usecase/role"
+	"github.com/dhanarrizky/Golang-template/internal/usecase/roles"
 )
 
 type RoleHandler struct {

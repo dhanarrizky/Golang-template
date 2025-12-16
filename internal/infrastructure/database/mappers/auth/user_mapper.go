@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"time"
+	"gorm.io/gorm"
+
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
 )

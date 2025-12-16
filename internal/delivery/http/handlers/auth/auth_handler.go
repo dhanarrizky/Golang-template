@@ -6,7 +6,6 @@ import (
 
 	"github.com/dhanarrizky/Golang-template/internal/delivery/http/dto"
 	"github.com/dhanarrizky/Golang-template/internal/usecase/auth"
-
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"

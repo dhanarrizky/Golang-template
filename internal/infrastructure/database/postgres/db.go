@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	authModels "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models"
+	authModels "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

@@ -3,14 +3,10 @@ package bootstrap
 import (
 	"github.com/gin-gonic/gin"
 
+	http "github.com/dhanarrizky/Golang-template/internal/delivery/http"
 	"github.com/dhanarrizky/Golang-template/internal/config"
-
-	authinfra "github.com/dhanarrizky/Golang-template/internal/infrastructure/auth"
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres"
-
-	"github.com/dhanarrizky/Golang-template/internal/delivery/http"
-	"github.com/dhanarrizky/Golang-template/internal/usecase/auth"
-	"github.com/dhanarrizky/Golang-template/internal/usecase/user"
+	authRepo "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres/auth"
 )
 
 func InitHTTPApp(cfg *config.Config) *gin.Engine {
@@ -19,22 +15,22 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// =====================
 	db := InitDatabase(cfg)
 	redis := InitRedis(cfg)
-	passwordHasher := InitPasswordHasher(cfg)
-	jwtSigner := authinfra.NewJWTSigner(cfg)
+	passwordHasher := InitTokenHasher(cfg)
+	// jwtSigner := authinfra.NewJWTSigner(cfg)
 
 	// =====================
 	// Repository
 	// =====================
 
 	// Auth
-	emailRepo := postgres.NewEmailVerificationTokenRepository(db)
-	loginAttemptRepo := postgres.NewLoginAttemptRepository(db)
-	passwordResetTokenRepo := postgres.NewPasswordResetTokenRepository(db)
-	refreshTokenFamilyRepo := postgres.NewRefreshTokenFamilyRepository(db)
-	refreshTokenRepo := postgres.NewRefreshTokenRepository(db)
-	roleRepo := postgres.NewRoleRepository(db)
-	userRepo := postgres.NewUserRepository(db)
-	sessionRepo := postgres.NewUserSessionRepository(db)
+	emailRepo := authRepo.NewEmailVerificationTokenRepository(db)
+	loginAttemptRepo := authRepo.NewLoginAttemptRepository(db)
+	passwordResetTokenRepo := authRepo.NewPasswordResetTokenRepository(db)
+	refreshTokenFamilyRepo := authRepo.NewRefreshTokenFamilyRepository(db)
+	refreshTokenRepo := authRepo.NewRefreshTokenRepository(db)
+	roleRepo := authRepo.NewRoleRepository(db)
+	userRepo := authRepo.NewUserRepository(db)
+	sessionRepo := authRepo.NewUserSessionRepository(db)
 
 	// =====================
 	// Mailer

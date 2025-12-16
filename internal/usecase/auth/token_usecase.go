@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/dhanarrizky/Golang-template/internal/domain"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
 )
 

@@ -6,15 +6,19 @@ import (
 
 	"github.com/dhanarrizky/Golang-template/internal/config"
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres"
+	"gorm.io/gorm"
 )
 
-func InitDatabase(cfg *config.Config) *postgres.DB {
+func InitDatabase(cfg *config.Config) *gorm.DB {
 	db, err := postgres.NewPostgresDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("failed to connect database:", err)
 	}
 
-	sqlDB := db.DB()
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal("failed to get sql DB:", err)
+	}
 
 	sqlDB.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.DatabaseMaxOpenConns)

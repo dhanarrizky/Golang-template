@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain"
+	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
 )
 
