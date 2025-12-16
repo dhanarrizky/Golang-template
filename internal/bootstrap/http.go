@@ -10,15 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 
 	"github.com/dhanarrizky/Golang-template/internal/config"
-	"github.com/dhanarrizky/Golang-template/internal/delivery/http"
-	"github.com/dhanarrizky/Golang-template/internal/infrastructure/cache"
-	"github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres"
-	authinfra "github.com/dhanarrizky/Golang-template/internal/infrastructure/auth"
-	"github.com/dhanarrizky/Golang-template/internal/usecase/auth"
-	"github.com/dhanarrizky/Golang-template/internal/usecase/user"
 )
 
 func RunHTTPServer() error {
@@ -27,61 +20,16 @@ func RunHTTPServer() error {
 		return err
 	}
 
+	// =====================
+	// Gin Mode
+	// =====================
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
 	}
 
-	// =====================
-	// Infrastructure
-	// =====================
-	db, err := postgres.NewPostgresDB(cfg.DatabaseURL)
-	if err != nil {
-		return err
-	}
-
-	var redisClient *redis.Client
-	if cfg.RedisEnable {
-		redisClient, err = cache.NewRedisClient(cfg.RedisHost, cfg.RedisPassword)
-		if err != nil {
-			return err
-		}
-	}
-
-	signer := authinfra.NewJWTSigner(cfg)
-
-	// =====================
-	// Repository
-	// =====================
-	userRepo := postgres.NewUserRepository(db)
-
-	// =====================
-	// Usecase
-	// =====================
-	getUserUC := user.NewGetUserUsecase(userRepo)
-	createUserUC := user.NewCreateUserUsecase(userRepo)
-	deleteUserUC := user.NewDeleteUserUsecase(userRepo)
-
-	authUC := auth.NewUserAuthUsecase(
-		userRepo,
-		signer,
-	)
-
-	// =====================
-	// HTTP
-	// =====================
-	router := gin.New()
-
-	http.RegisterRoutes(
-		router,
-		http.RouteDeps{
-			GetUserUC:    getUserUC,
-			CreateUserUC: createUserUC,
-			DeleteUserUC: deleteUserUC,
-			AuthUC:       authUC,
-			Redis:        redisClient,
-			Config:       *cfg,
-		},
-	)
+	router := InitHTTPApp(cfg)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,
@@ -89,13 +37,26 @@ func RunHTTPServer() error {
 	}
 
 	go func() {
-		log.Println("HTTP server running on", cfg.AppPort)
-		_ = srv.ListenAndServe()
+		log.Printf(
+			"[BOOTSTRAP] HTTP server running on :%s | env=%s | debug=%v",
+			cfg.AppPort,
+			cfg.Environment,
+			cfg.AppDebug,
+		)
+
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("server error:", err)
+		}
 	}()
 
+	// =====================
+	// Graceful Shutdown
+	// =====================
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+
+	log.Println("[BOOTSTRAP] Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

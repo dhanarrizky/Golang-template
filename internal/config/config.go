@@ -52,6 +52,11 @@ type Config struct {
 	Password PasswordConfig
 
 	// =========================
+	// Security - Password (Argon2id)
+	// =========================
+	SecretToken string `mapstructure:"EMAIL_VERIFICATION_TOKEN_SECRET"`
+
+	// =========================
 	// Security - ID (HMAC-Signed Identifier)
 	// =========================
 	SecretKey string `mapstructure:"SECRET_KEY"`
@@ -84,6 +89,17 @@ type Config struct {
 	SwaggerEnable   bool   `mapstructure:"SWAGGER_ENABLE"`
 	SwaggerHost     string `mapstructure:"SWAGGER_HOST"`
 	SwaggerBasePath string `mapstructure:"SWAGGER_BASE_PATH"`
+
+	// =========================
+	// SMTP Email Configuration
+	// =========================
+	SMTPEngine      string `mapstructure:"SMTP_ENGINE"`       // contoh: "smtp" atau "ses" di masa depan
+	SMTPHost        string `mapstructure:"SMTP_HOST"`
+	SMTPPort        string `mapstructure:"SMTP_PORT"`          // biasanya "587" atau "465"
+	SMTPUsername    string `mapstructure:"SMTP_USERNAME"`
+	SMTPPassword    string `mapstructure:"SMTP_PASSWORD"`
+	SMTPFromAddress string `mapstructure:"SMTP_FROM_ADDRESS"`  // email pengirim
+	SMTPFromName    string `mapstructure:"SMTP_FROM_NAME"`     // nama pengirim (opsional)
 }
 
 // =========================
@@ -134,6 +150,18 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("PASSWORD_ARGON2_SALT_LENGTH", 16)
 	viper.SetDefault("PASSWORD_ARGON2_KEY_LENGTH", 32)
 	viper.SetDefault("PASSWORD_PEPPER_VERSION", 1)
+	
+	// secret token
+	viper.SetDefault("EMAIL_VERIFICATION_TOKEN_SECRET", "super-long-random-secret")
+	
+	// =========================
+	// Defaults untuk SMTP
+	// =========================
+	viper.SetDefault("SMTP_ENGINE", "smtp")
+	viper.SetDefault("SMTP_HOST", "smtp.gmail.com")
+	viper.SetDefault("SMTP_PORT", "587")
+	viper.SetDefault("SMTP_FROM_ADDRESS", "no-reply@yourapp.com")
+	viper.SetDefault("SMTP_FROM_NAME", "Your App")
 
 	_ = viper.ReadInConfig()
 

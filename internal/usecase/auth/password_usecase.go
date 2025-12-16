@@ -84,7 +84,7 @@ func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
 	}
 
 	// Kirim email (di real app: gunakan template + link frontend)
-	resetLink := "https://yourapp.com/reset-password?token=" + plainToken
+	resetLink := "https://github.com/dhanarrizky/Golang-template.com/reset-password?token=" + plainToken
 	err = u.mailer.Send(ctx, user.Email, "Password Reset", "Click here to reset: "+resetLink)
 	if err != nil {
 		// Log error, tapi jangan fail request (user experience)

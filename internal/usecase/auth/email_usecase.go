@@ -25,22 +25,22 @@ type EmailUsecase interface {
 type emailUsecase struct {
 	userRepo        ports.UserRepository
 	tokenRepo       ports.EmailVerificationTokenRepository
-	passwordHasher  ports.PasswordHasher
+	tokenHasher  	ports.TokenHasher
 	mailer          ports.Mailer
 	tokenExpiry     time.Duration
 }
 
 func NewEmailUsecase(
-	userRepo ports.UserRepository,
-	tokenRepo ports.EmailVerificationTokenRepository,
-	passwordHasher ports.PasswordHasher,
-	mailer ports.Mailer,
-	tokenExpiry time.Duration,
+	userRepo 		ports.UserRepository,
+	tokenRepo 		ports.EmailVerificationTokenRepository,
+	tokenHasher 	ports.TokenHasher,
+	mailer 			ports.Mailer,
+	tokenExpiry 	time.Duration,
 ) EmailUsecase {
 	return &emailUsecase{
 		userRepo:       userRepo,
 		tokenRepo:      tokenRepo,
-		passwordHasher: passwordHasher,
+		tokenHasher: tokenHasher,
 		mailer:         mailer,
 		tokenExpiry:    tokenExpiry,
 	}
@@ -49,7 +49,10 @@ func NewEmailUsecase(
 // ================= VERIFY =================
 
 func (u *emailUsecase) Verify(ctx context.Context, plainToken string) error {
-	hashed := u.passwordHasher.Hash(plainToken)
+	hashed, err := u.tokenHasher.Hash(plainToken)
+	if err != nil {
+		return ErrVerificationTokenInvalid
+	}
 
 	token, err := u.tokenRepo.FindByToken(ctx, hashed)
 	if err != nil || token == nil {
@@ -69,36 +72,40 @@ func (u *emailUsecase) Verify(ctx context.Context, plainToken string) error {
 		return ErrEmailAlreadyVerified
 	}
 
-	// Mark verified
 	if err := u.userRepo.MarkEmailVerified(ctx, user.ID); err != nil {
 		return err
 	}
 
-	// Mark token used + cleanup old tokens
 	u.tokenRepo.MarkAsUsed(ctx, hashed)
 	u.tokenRepo.DeleteAllByUser(ctx, user.ID)
 
 	return nil
 }
 
+
 // ================= RESEND =================
 
 func (u *emailUsecase) Resend(ctx context.Context, email string) error {
 	user, err := u.userRepo.FindByEmail(ctx, email)
 	if err != nil || user == nil {
-		return nil // silent
+		return nil
 	}
 
 	if user.EmailVerified {
-		return nil // silent
+		return nil
 	}
 
-	// Generate secure token
 	raw := make([]byte, 48)
-	rand.Read(raw)
+	if _, err := rand.Read(raw); err != nil {
+		return err
+	}
 
 	plain := base64.URLEncoding.EncodeToString(raw)
-	hashed := u.passwordHasher.Hash(plain)
+
+	hashed, err := u.tokenHasher.Hash(plain)
+	if err != nil {
+		return err
+	}
 
 	token := domain.EmailVerificationToken{
 		ID:        uuid.NewString(),
