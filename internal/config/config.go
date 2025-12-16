@@ -43,6 +43,7 @@ type Config struct {
 	// =========================
 	JWTSecret    string `mapstructure:"JWT_SECRET"`
 	JWTExpiresIn string `mapstructure:"JWT_EXPIRES_IN"`
+	JWTRefreshExpiresIn string `mapstructure:"JWT_REFRESH_EXPIRES_IN"`
 	JWTIssuer    string `mapstructure:"JWT_ISSUER"`
 	JWTAudience  string `mapstructure:"JWT_AUDIENCE"`
 

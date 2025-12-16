@@ -15,7 +15,7 @@ func ResponseHandler() gin.HandlerFunc {
 		if len(c.Errors) > 0 {
 			err := c.Errors.Last().Err
 
-			if appErr, ok := err.(*errors.AppError); ok {
+			if appErr, ok := err.(*response.AppError); ok {
 				c.JSON(appErr.Status, response.APIResponse{
 					Success: false,
 					Code:    appErr.Code,

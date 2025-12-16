@@ -7,6 +7,7 @@ import (
 	"github.com/dhanarrizky/Golang-template/internal/config"
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres"
 	authRepo "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres/auth"
+	auth "github.com/dhanarrizky/Golang-template/internal/usecase/auth"
 )
 
 func InitHTTPApp(cfg *config.Config) *gin.Engine {
@@ -15,7 +16,8 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// =====================
 	db := InitDatabase(cfg)
 	redis := InitRedis(cfg)
-	passwordHasher := InitTokenHasher(cfg)
+	tokenHasher := InitTokenHasher(cfg)
+	passwordHasher := securityInfra.NewArgon2Hasher(cfg.Security.Pepper)
 	// jwtSigner := authinfra.NewJWTSigner(cfg)
 
 	// =====================
@@ -54,12 +56,27 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 
 	// Auth
 
-	// loginUC := auth.NewLoginUsecase(
-	// 	userRepo,
-	// 	sessionRepo,
-	// 	jwtSigner,
-	// 	redis,
-	// )
+	accessExp, err := time.ParseDuration(cfg.JWTExpiresIn)
+	if err != nil {
+		log.Fatalf("invalid JWT_EXPIRES_IN: %v", err)
+	}
+
+	refreshExp, err := time.ParseDuration(cfg.JWTRefreshExpiresIn)
+	if err != nil {
+		log.Fatalf("invalid JWT_REFRESH_EXPIRES_IN: %v", err)
+	}
+
+
+	loginUC := authUC.NewLoginUsecase(
+		userRepo,
+		loginAttemptRepo,
+		sessionRepo,
+		refreshTokenRepo,
+		passwordHasher,
+		cfg.JWTSecret,
+		accessExp,
+		refreshExp,
+	)
 
 	// tokenUC := auth.NewTokenUsecase(
 	// 	sessionRepo,
