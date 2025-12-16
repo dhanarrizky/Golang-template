@@ -1,76 +1,83 @@
-package auth
+package repositories
 
 import (
 	"context"
+	"time"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
-	"github.com/dhanarrizky/Golang-template/internal/repository"
-
+	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+	mapper "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/mappers/auth"
+	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
+	"github.com/dhanarrizky/Golang-template/internal/ports"
 	"gorm.io/gorm"
-	dbctx "github.com/dhanarrizky/Golang-template/pkg/database"
 )
 
 type refreshTokenRepository struct {
 	db *gorm.DB
 }
 
-func NewRefreshTokenRepository(db *gorm.DB) repository.RefreshTokenRepository {
+func NewRefreshTokenRepository(db *gorm.DB) ports.RefreshTokenRepository {
 	return &refreshTokenRepository{db: db}
 }
 
 func (r *refreshTokenRepository) Create(
 	ctx context.Context,
-	token *entities.RefreshToken,
+	token *domain.RefreshToken,
 ) error {
-	db := dbctx.GetDB(ctx, r.db)
-	return db.WithContext(ctx).Create(token).Error
+
+	m := mapper.ToModelRefreshToken(token)
+	return r.db.WithContext(ctx).Create(m).Error
 }
 
 func (r *refreshTokenRepository) GetByTokenHash(
 	ctx context.Context,
 	hash string,
-) (*entities.RefreshToken, error) {
+) (*domain.RefreshToken, error) {
 
-	var token entities.RefreshToken
-	db := dbctx.GetDB(ctx, r.db)
+	var m model.RefreshToken
 
-	err := db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Where("token_hash = ?", hash).
-		First(&token).Error
+		First(&m).Error
+	if err != nil {
+		return nil, err
+	}
 
-	return &token, err
+	return mapper.ToDomainRefreshToken(&m), nil
 }
 
 func (r *refreshTokenRepository) Revoke(
 	ctx context.Context,
-	id uint,
+	id uint64,
 ) error {
 
-	db := dbctx.GetDB(ctx, r.db)
+	now := time.Now()
 
-	return db.WithContext(ctx).
-		Model(&entities.RefreshToken{}).
+	return r.db.WithContext(ctx).
+		Model(&model.RefreshToken{}).
 		Where("id = ?", id).
-		Update("revoked_at", gorm.Expr("NOW()")).Error
+		Update("revoked_at", &now).Error
 }
 
 func (r *refreshTokenRepository) RevokeByFamily(
 	ctx context.Context,
-	familyID uint,
+	familyID uint64,
 ) error {
 
-	db := dbctx.GetDB(ctx, r.db)
+	now := time.Now()
 
-	return db.WithContext(ctx).
-		Model(&entities.RefreshToken{}).
+	return r.db.WithContext(ctx).
+		Model(&model.RefreshToken{}).
 		Where("family_id = ?", familyID).
-		Update("revoked_at", gorm.Expr("NOW()")).Error
+		Update("revoked_at", &now).Error
 }
 
-func (r *refreshTokenRepository) DeleteExpired(ctx context.Context) error {
-	db := dbctx.GetDB(ctx, r.db)
+func (r *refreshTokenRepository) DeleteExpired(
+	ctx context.Context,
+) error {
 
-	return db.WithContext(ctx).
-		Where("expires_at < NOW()").
-		Delete(&entities.RefreshToken{}).Error
+	now := time.Now()
+
+	return r.db.WithContext(ctx).
+		Where("expires_at < ?", now).
+		Delete(&model.RefreshToken{}).Error
 }

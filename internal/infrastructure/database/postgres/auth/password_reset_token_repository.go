@@ -1,10 +1,12 @@
-package auth
+package repositories
 
 import (
 	"context"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
-	"github.com/dhanarrizky/Golang-template/internal/repository"
+	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+	mapper "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/mappers/auth"
+	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
+	"github.com/dhanarrizky/Golang-template/internal/ports"
 	"gorm.io/gorm"
 )
 
@@ -12,25 +14,43 @@ type passwordResetTokenRepository struct {
 	db *gorm.DB
 }
 
-func NewPasswordResetTokenRepository(db *gorm.DB) repository.PasswordResetTokenRepository {
+func NewPasswordResetTokenRepository(db *gorm.DB) ports.PasswordResetTokenRepository {
 	return &passwordResetTokenRepository{db: db}
 }
 
-func (r *passwordResetTokenRepository) Create(ctx context.Context, token *entities.PasswordResetToken) error {
-	return r.db.WithContext(ctx).Create(token).Error
+func (r *passwordResetTokenRepository) Create(
+	ctx context.Context,
+	token *domain.PasswordResetToken,
+) error {
+
+	m := mapper.ToModelPasswordResetToken(token)
+	return r.db.WithContext(ctx).Create(m).Error
 }
 
-func (r *passwordResetTokenRepository) GetByTokenHash(ctx context.Context, hash string) (*entities.PasswordResetToken, error) {
-	var token entities.PasswordResetToken
+func (r *passwordResetTokenRepository) GetByTokenHash(
+	ctx context.Context,
+	hash string,
+) (*domain.PasswordResetToken, error) {
+
+	var m model.PasswordResetToken
+
 	err := r.db.WithContext(ctx).
 		Where("token_hash = ?", hash).
-		First(&token).Error
-	return &token, err
+		First(&m).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.ToDomainPasswordResetToken(&m), nil
 }
 
-func (r *passwordResetTokenRepository) MarkUsed(ctx context.Context, id uint) error {
+func (r *passwordResetTokenRepository) MarkUsed(
+	ctx context.Context,
+	id uint64,
+) error {
+
 	return r.db.WithContext(ctx).
-		Model(&entities.PasswordResetToken{}).
+		Model(&model.PasswordResetToken{}).
 		Where("id = ?", id).
 		Update("used", true).Error
 }

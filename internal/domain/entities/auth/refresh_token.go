@@ -1,24 +1,26 @@
 package auth
 
-import (
-	"time"
+import "time"
 
-	"gorm.io/gorm"
-)
-
+// RefreshToken adalah credential (bukan session)
 type RefreshToken struct {
-	ID        uint64     `gorm:"primaryKey;autoIncrement;type:bigserial"`
-	UserID    uint64     `gorm:"not null;index:idx_rt_user_family,priority:1"`
-	FamilyID  uint64     `gorm:"not null;index:idx_rt_user_family,priority:2"`
+	ID        uint64
+	UserID    uint64
+	FamilyID  uint64
 
-	User      User              `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-	Family    RefreshTokenFamily `gorm:"foreignKey:FamilyID;constraint:OnDelete:CASCADE"`
-
-	TokenHash string     `gorm:"size:255;uniqueIndex;not null"`
-	ExpiresAt time.Time  `gorm:"index:idx_rt_expires_at"`
+	TokenHash string
+	ExpiresAt time.Time
 	CreatedAt time.Time
 	RevokedAt *time.Time
 
-	IPAddress string `gorm:"size:60"`
-	UserAgent string `gorm:"type:text"`
+	IPAddress string
+	UserAgent string
+}
+
+func (t *RefreshToken) IsExpired(now time.Time) bool {
+	return now.After(t.ExpiresAt)
+}
+
+func (t *RefreshToken) IsRevoked() bool {
+	return t.RevokedAt != nil
 }

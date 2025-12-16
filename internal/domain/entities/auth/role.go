@@ -1,17 +1,23 @@
 package auth
 
-import (
-	"time"
+import "time"
 
-	"gorm.io/gorm"
-)
-
+// Role adalah domain concept untuk authorization
 type Role struct {
-	ID          uint64    `gorm:"primaryKey;autoIncrement;type:bigserial"`
-	Name        string    `gorm:"size:50;uniqueIndex;not null"`
-	Description *string   `gorm:"type:text"`
-	CreatedAt   time.Time
+	ID uint64
 
-	// Relations
-	Users []User
+	Name        string
+	Description *string
+
+	CreatedAt time.Time
+}
+
+/* ===== Domain Behavior ===== */
+
+func (r *Role) Rename(name string) {
+	r.Name = name
+}
+
+func (r *Role) ChangeDescription(desc *string) {
+	r.Description = desc
 }

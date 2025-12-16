@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	authEntities "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+	authModels "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -13,14 +13,14 @@ func NewPostgresDB(dsn string) (*gorm.DB, error) {
 	}
 
 	err = db.AutoMigrate(
-		&authEntities.User{},
-		&authEntities.Role{},
-		&authEntities.EmailVerificationToken{},
-		&authEntities.PasswordResetToken{},
-		&authEntities.RefreshTokenFamily{},
-		&authEntities.RefreshToken{},
-		&authEntities.UserSession{},
-		&authEntities.LoginAttempt{},
+		&authModels.User{},
+		&authModels.Role{},
+		&authModels.EmailVerificationToken{},
+		&authModels.PasswordResetToken{},
+		&authModels.RefreshTokenFamily{},
+		&authModels.RefreshToken{},
+		&authModels.UserSession{},
+		&authModels.LoginAttempt{},
 	)
 	if err != nil {
 		return nil, err

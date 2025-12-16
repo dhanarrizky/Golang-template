@@ -1,52 +1,58 @@
-package auth
+package repositories
 
 import (
 	"context"
+	"time"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
-	"github.com/dhanarrizky/Golang-template/internal/repository"
-
+	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+	mapper "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/mappers/auth"
+	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
+	"github.com/dhanarrizky/Golang-template/internal/ports"
 	"gorm.io/gorm"
-	dbctx "github.com/dhanarrizky/Golang-template/pkg/database"
 )
 
 type refreshTokenFamilyRepository struct {
 	db *gorm.DB
 }
 
-func NewRefreshTokenFamilyRepository(db *gorm.DB) repository.RefreshTokenFamilyRepository {
+func NewRefreshTokenFamilyRepository(db *gorm.DB) ports.RefreshTokenFamilyRepository {
 	return &refreshTokenFamilyRepository{db: db}
 }
 
-func (r *refreshTokenFamilyRepository) CreateFamily(
+func (r *refreshTokenFamilyRepository) Create(
 	ctx context.Context,
-	family *entities.RefreshTokenFamily,
-) error {
-	db := dbctx.GetDB(ctx, r.db)
-	return db.WithContext(ctx).Create(family).Error
-}
-
-func (r *refreshTokenFamilyRepository) GetFamilyByID(
-	ctx context.Context,
-	id uint,
-) (*entities.RefreshTokenFamily, error) {
-
-	var fam entities.RefreshTokenFamily
-	db := dbctx.GetDB(ctx, r.db)
-
-	err := db.WithContext(ctx).First(&fam, id).Error
-	return &fam, err
-}
-
-func (r *refreshTokenFamilyRepository) RevokeFamily(
-	ctx context.Context,
-	id uint,
+	family *domain.RefreshTokenFamily,
 ) error {
 
-	db := dbctx.GetDB(ctx, r.db)
+	m := mapper.ToModelRefreshTokenFamily(family)
+	return r.db.WithContext(ctx).Create(m).Error
+}
 
-	return db.WithContext(ctx).
-		Model(&entities.RefreshTokenFamily{}).
+func (r *refreshTokenFamilyRepository) GetByID(
+	ctx context.Context,
+	id uint64,
+) (*domain.RefreshTokenFamily, error) {
+
+	var m model.RefreshTokenFamily
+
+	err := r.db.WithContext(ctx).
+		First(&m, id).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.ToDomainRefreshTokenFamily(&m), nil
+}
+
+func (r *refreshTokenFamilyRepository) Revoke(
+	ctx context.Context,
+	id uint64,
+) error {
+
+	now := time.Now()
+
+	return r.db.WithContext(ctx).
+		Model(&model.RefreshTokenFamily{}).
 		Where("id = ?", id).
-		Update("revoked_at", gorm.Expr("NOW()")).Error
+		Update("revoked_at", &now).Error
 }

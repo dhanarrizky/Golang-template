@@ -1,19 +1,28 @@
 package auth
 
-import (
-	"time"
+import "time"
 
-	"gorm.io/gorm"
-)
-
+// UserSession merepresentasikan login session (bukan token)
 type UserSession struct {
-	ID        uint64     `gorm:"primaryKey;autoIncrement;type:bigserial"`
-	UserID    uint64     `gorm:"not null;index:idx_us_user_id"`
-	User      User       `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	ID     uint64
+	UserID uint64
 
-	IPAddress  string
-	UserAgent  string
-	LoginAt    time.Time  `gorm:"not null;default:now()"`
-	LastSeenAt *time.Time `gorm:"index:idx_us_last_seen"`
+	IPAddress string
+	UserAgent string
+
+	LoginAt    time.Time
+	LastSeenAt *time.Time
 	LogoutAt   *time.Time
+}
+
+func (s *UserSession) IsActive() bool {
+	return s.LogoutAt == nil
+}
+
+func (s *UserSession) Touch(now time.Time) {
+	s.LastSeenAt = &now
+}
+
+func (s *UserSession) Logout(now time.Time) {
+	s.LogoutAt = &now
 }

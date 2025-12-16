@@ -1,17 +1,11 @@
 package auth
 
-import (
-	"time"
-
-	"gorm.io/gorm"
-)
+import "time"
 
 type EmailVerificationToken struct {
-	ID        uint64    `gorm:"primaryKey;autoIncrement;type:bigserial"`
-	UserID    uint64    `gorm:"not null;index:idx_evt_user_id"`
-	User      User      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
-
-	TokenHash string    `gorm:"size:255;uniqueIndex;not null"`
-	ExpiresAt time.Time `gorm:"index:idx_evt_expires_at"`
+	ID        uint64
+	UserID    uint64
+	TokenHash string
+	ExpiresAt time.Time
 	CreatedAt time.Time
 }

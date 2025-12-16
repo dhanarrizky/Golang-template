@@ -33,3 +33,7 @@ func AuthMiddleware(signer *auth.Signer) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+
+// c.Set("user_id", userID)
+// c.Set("family_id", familyID) // dari refresh-token-family
