@@ -1,6 +1,11 @@
 // Contoh valueobjects/email.go (opsional, tidak wajib)
 package valueobjects
 
+import (
+	"errors"
+	"strings"
+)
+
 type Email string
 
 func NewEmail(value string) (Email, error) {

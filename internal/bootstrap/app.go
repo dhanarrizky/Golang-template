@@ -1,13 +1,20 @@
 package bootstrap
 
 import (
-	"github.com/gin-gonic/gin"
+	"log"
+	"time"
 
-	http "github.com/dhanarrizky/Golang-template/internal/delivery/http"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+
 	"github.com/dhanarrizky/Golang-template/internal/config"
-	"github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres"
+	http "github.com/dhanarrizky/Golang-template/internal/delivery/http"
 	authRepo "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres/auth"
-	auth "github.com/dhanarrizky/Golang-template/internal/usecase/auth"
+	"github.com/dhanarrizky/Golang-template/internal/infrastructure/mailer"
+	"github.com/dhanarrizky/Golang-template/internal/infrastructure/security"
+	authUC "github.com/dhanarrizky/Golang-template/internal/usecase/auth"
+	roleUC "github.com/dhanarrizky/Golang-template/internal/usecase/roles"
+	userUC "github.com/dhanarrizky/Golang-template/internal/usecase/user"
 )
 
 func InitHTTPApp(cfg *config.Config) *gin.Engine {
@@ -15,9 +22,17 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// Infrastructure
 	// =====================
 	db := InitDatabase(cfg)
-	redis := InitRedis(cfg)
+	// redis := InitRedis(cfg)
 	tokenHasher := InitTokenHasher(cfg)
-	passwordHasher := securityInfra.NewArgon2Hasher(cfg.Security.Pepper)
+	passwordHasher := security.NewPasswordHasher(&security.PasswordConfig{
+		Memory:               cfg.Password.Memory,
+		Iterations:           cfg.Password.Iterations,
+		Parallelism:          cfg.Password.Parallelism,
+		SaltLength:           cfg.Password.SaltLength,
+		KeyLength:            cfg.Password.KeyLength,
+		Peppers:              cfg.Password.Peppers,
+		CurrentPepperVersion: cfg.Password.CurrentPepperVersion,
+	})
 	// jwtSigner := authinfra.NewJWTSigner(cfg)
 
 	// =====================
@@ -28,7 +43,7 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	emailRepo := authRepo.NewEmailVerificationTokenRepository(db)
 	loginAttemptRepo := authRepo.NewLoginAttemptRepository(db)
 	passwordResetTokenRepo := authRepo.NewPasswordResetTokenRepository(db)
-	refreshTokenFamilyRepo := authRepo.NewRefreshTokenFamilyRepository(db)
+	// refreshTokenFamilyRepo := authRepo.NewRefreshTokenFamilyRepository(db)
 	refreshTokenRepo := authRepo.NewRefreshTokenRepository(db)
 	roleRepo := authRepo.NewRoleRepository(db)
 	userRepo := authRepo.NewUserRepository(db)
@@ -37,7 +52,7 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// =====================
 	// Mailer
 	// =====================
-	mailer, err := mailerinfra.NewSMTPMailer(
+	mailer, err := mailer.NewSMTPMailer(
 		cfg.SMTPHost,
 		cfg.SMTPPort,
 		cfg.SMTPUsername,
@@ -45,10 +60,10 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		cfg.SMTPFromName,
 		cfg.SMTPFromAddress,
 	)
+
 	if err != nil {
 		log.Fatal(err)
 	}
-
 
 	// =====================
 	// Usecases
@@ -66,7 +81,6 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		log.Fatalf("invalid JWT_REFRESH_EXPIRES_IN: %v", err)
 	}
 
-
 	loginUC := authUC.NewLoginUsecase(
 		userRepo,
 		loginAttemptRepo,
@@ -78,12 +92,46 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		refreshExp,
 	)
 
-	// tokenUC := auth.NewTokenUsecase(
-	// 	sessionRepo,
-	// 	jwtSigner,
-	// )
+	emailUC := authUC.NewEmailUsecase(
+		userRepo,
+		emailRepo,
+		tokenHasher,
+		mailer,
+		accessExp,
+	)
 
-	// userUC := user.NewUserUsecase(userRepo)
+	passwordUC := authUC.NewPasswordUsecase(
+		userRepo,
+		passwordResetTokenRepo,
+		refreshTokenRepo,
+		sessionRepo,
+		passwordHasher,
+		mailer,
+		accessExp, // harusnya bukan access exp
+	)
+
+	sessionUC := authUC.NewSessionUsecase(
+		sessionRepo,
+		refreshTokenRepo,
+	)
+
+	roleUC := roleUC.NewRoleUsecase(
+		roleRepo,
+		userRepo,
+	)
+
+	tokenUC := authUC.NewTokenUsecase(
+		refreshTokenRepo,
+		sessionRepo,
+		cfg.JWTSecret,
+		accessExp,
+		refreshExp,
+	)
+
+	userUC := userUC.NewUserUsecase(
+		userRepo,
+		sessionRepo,
+		refreshTokenRepo)
 
 	// =====================
 	// HTTP Router
@@ -94,11 +142,15 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		router,
 		http.RouteDeps{
 			Validator: validator.New(),
-			Config:    http.ConfigFrom(cfg),
+			Config:    cfg,
 
-			LoginUC: loginUC,
-			TokenUC: tokenUC,
-			UserUC:  userUC,
+			EmailUC:    emailUC,
+			LoginUC:    loginUC,
+			PasswordUC: passwordUC,
+			SessionUC:  sessionUC,
+			TokenUC:    tokenUC,
+			RoleUC:     roleUC,
+			UserUC:     userUC,
 		},
 	)
 

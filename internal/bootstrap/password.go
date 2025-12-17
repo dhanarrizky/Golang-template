@@ -1,10 +1,11 @@
 package bootstrap
 
 import (
+	"log"
+
 	"github.com/dhanarrizky/Golang-template/internal/config"
 
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/security"
-	"github.com/dhanarrizky/Golang-template/pkg/utils"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
 )
 

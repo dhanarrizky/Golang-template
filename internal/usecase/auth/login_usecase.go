@@ -5,10 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type LoginResult struct {
@@ -102,20 +101,20 @@ func (u *loginUsecase) Execute(ctx context.Context, identifier, password, device
 
 	// 5. Create session
 	u.sessionRepo.Create(ctx, domain.UserSession{
-		UserID:    user.ID,
-		Device:    deviceName,
-		FamilyID:  familyID,
-		LastUsed:  time.Now(),
+		UserID:   user.ID,
+		Device:   deviceName,
+		FamilyID: familyID,
+		LastUsed: time.Now(),
 	})
 
 	// 6. Generate JWT access token
 	accessExp := time.Now().Add(u.accessExp)
 	claims := jwt.MapClaims{
-		"sub": user.ID,
+		"sub":   user.ID,
 		"email": user.Email,
 		"roles": user.Roles,
-		"exp": accessExp.Unix(),
-		"iat": time.Now().Unix(),
+		"exp":   accessExp.Unix(),
+		"iat":   time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	accessToken, err := token.SignedString([]byte(u.jwtSecret))

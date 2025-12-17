@@ -11,11 +11,11 @@ import (
 )
 
 type RoleHandler struct {
-	usecase  role.RoleUsecase
+	usecase  roles.RoleUsecase
 	validate *validator.Validate
 }
 
-func NewRoleHandler(usecase role.RoleUsecase, validate *validator.Validate) *RoleHandler {
+func NewRoleHandler(usecase roles.RoleUsecase, validate *validator.Validate) *RoleHandler {
 	return &RoleHandler{
 		usecase:  usecase,
 		validate: validate,

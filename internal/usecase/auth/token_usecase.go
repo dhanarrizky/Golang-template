@@ -5,22 +5,22 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var (
-	ErrRefreshTokenNotFound   = errors.New("refresh token not found")
-	ErrRefreshTokenExpired    = errors.New("refresh token expired")
+	ErrRefreshTokenNotFound    = errors.New("refresh token not found")
+	ErrRefreshTokenExpired     = errors.New("refresh token expired")
 	ErrRefreshTokenCompromised = errors.New("possible token reuse detected")
 	ErrRefreshTokenRevoked     = errors.New("refresh token has been revoked")
 )
 
 type RefreshResult struct {
-	AccessToken string
-	AccessExp   time.Time
+	AccessToken     string
+	AccessExp       time.Time
 	NewRefreshToken string // untuk rotation
 	NewRefreshExp   time.Time
 }
@@ -32,11 +32,11 @@ type TokenUsecase interface {
 }
 
 type tokenUsecase struct {
-	refreshRepo   ports.RefreshTokenRepository
-	sessionRepo   ports.UserSessionRepository
-	jwtSecret     string
-	accessExp     time.Duration
-	refreshExp    time.Duration
+	refreshRepo ports.RefreshTokenRepository
+	sessionRepo ports.UserSessionRepository
+	jwtSecret   string
+	accessExp   time.Duration
+	refreshExp  time.Duration
 }
 
 func NewTokenUsecase(
@@ -46,11 +46,11 @@ func NewTokenUsecase(
 	accessExp, refreshExp time.Duration,
 ) TokenUsecase {
 	return &tokenUsecase{
-		refreshRepo:   refreshRepo,
-		sessionRepo:   sessionRepo,
-		jwtSecret:     jwtSecret,
-		accessExp:     accessExp,
-		refreshExp:    refreshExp,
+		refreshRepo: refreshRepo,
+		sessionRepo: sessionRepo,
+		jwtSecret:   jwtSecret,
+		accessExp:   accessExp,
+		refreshExp:  refreshExp,
 	}
 }
 

@@ -1,6 +1,11 @@
 package ports
 
+// PasswordHasher mendefinisikan kontrak untuk hashing dan verifikasi password
 type PasswordHasher interface {
-	Hash(plain string) (hashed string, err error)
-	Compare(plain, hashed string) (match bool, err error)
+	// HashPassword menghasilkan hash password dengan pepper versi saat ini
+	HashPassword(password []byte) (hashed string, pepperVersion int, err error)
+
+	// VerifyPassword memverifikasi password terhadap hash yang sudah ada
+	// Mengembalikan (match bool, shouldRehash bool, err error)
+	VerifyPassword(password []byte, hashed string) (bool, bool, error)
 }

@@ -17,10 +17,12 @@ func InitRedis(cfg *config.Config) *redis.Client {
 
 	client, err := cache.NewRedisClient(cache.RedisConfig{
 		Host:     cfg.RedisHost,
+		Port:     cfg.RedisPort,
 		Password: cfg.RedisPassword,
 		DB:       cfg.RedisDB,
 		UseTLS:   cfg.RedisTLS,
 	})
+
 	if err != nil {
 		log.Fatal("failed to connect redis:", err)
 	}

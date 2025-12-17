@@ -34,6 +34,7 @@ type Config struct {
 	// =========================
 	RedisEnable   bool   `mapstructure:"REDIS_ENABLE"`
 	RedisHost     string `mapstructure:"REDIS_HOST"`
+	RedisPort     int    `mapstructure:"REDIS_PORT"`
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 	RedisDB       int    `mapstructure:"REDIS_DB"`
 	RedisTLS      bool   `mapstructure:"REDIS_TLS"`
@@ -41,11 +42,11 @@ type Config struct {
 	// =========================
 	// Authentication - JWT
 	// =========================
-	JWTSecret    string `mapstructure:"JWT_SECRET"`
-	JWTExpiresIn string `mapstructure:"JWT_EXPIRES_IN"`
+	JWTSecret           string `mapstructure:"JWT_SECRET"`
+	JWTExpiresIn        string `mapstructure:"JWT_EXPIRES_IN"`
 	JWTRefreshExpiresIn string `mapstructure:"JWT_REFRESH_EXPIRES_IN"`
-	JWTIssuer    string `mapstructure:"JWT_ISSUER"`
-	JWTAudience  string `mapstructure:"JWT_AUDIENCE"`
+	JWTIssuer           string `mapstructure:"JWT_ISSUER"`
+	JWTAudience         string `mapstructure:"JWT_AUDIENCE"`
 
 	// =========================
 	// Security - Password (Argon2id)
@@ -76,7 +77,7 @@ type Config struct {
 	// =========================
 	// Cache
 	// =========================
-	CacheTTL       string        `mapstructure:"CACHE_TTL"`
+	CacheTTL       string `mapstructure:"CACHE_TTL"`
 	ParsedCacheTTL time.Duration
 
 	// =========================
@@ -94,13 +95,13 @@ type Config struct {
 	// =========================
 	// SMTP Email Configuration
 	// =========================
-	SMTPEngine      string `mapstructure:"SMTP_ENGINE"`       // contoh: "smtp" atau "ses" di masa depan
+	SMTPEngine      string `mapstructure:"SMTP_ENGINE"` // contoh: "smtp" atau "ses" di masa depan
 	SMTPHost        string `mapstructure:"SMTP_HOST"`
-	SMTPPort        string `mapstructure:"SMTP_PORT"`          // biasanya "587" atau "465"
+	SMTPPort        string `mapstructure:"SMTP_PORT"` // biasanya "587" atau "465"
 	SMTPUsername    string `mapstructure:"SMTP_USERNAME"`
 	SMTPPassword    string `mapstructure:"SMTP_PASSWORD"`
-	SMTPFromAddress string `mapstructure:"SMTP_FROM_ADDRESS"`  // email pengirim
-	SMTPFromName    string `mapstructure:"SMTP_FROM_NAME"`     // nama pengirim (opsional)
+	SMTPFromAddress string `mapstructure:"SMTP_FROM_ADDRESS"` // email pengirim
+	SMTPFromName    string `mapstructure:"SMTP_FROM_NAME"`    // nama pengirim (opsional)
 }
 
 // =========================
@@ -114,7 +115,7 @@ type PasswordConfig struct {
 	KeyLength   uint32 `mapstructure:"PASSWORD_ARGON2_KEY_LENGTH"`
 
 	// Pepper management
-	Peppers map[int]string
+	Peppers              map[int]string
 	CurrentPepperVersion int `mapstructure:"PASSWORD_PEPPER_VERSION"`
 }
 
@@ -151,10 +152,10 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("PASSWORD_ARGON2_SALT_LENGTH", 16)
 	viper.SetDefault("PASSWORD_ARGON2_KEY_LENGTH", 32)
 	viper.SetDefault("PASSWORD_PEPPER_VERSION", 1)
-	
+
 	// secret token
 	viper.SetDefault("EMAIL_VERIFICATION_TOKEN_SECRET", "super-long-random-secret")
-	
+
 	// =========================
 	// Defaults untuk SMTP
 	// =========================
