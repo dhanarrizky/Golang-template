@@ -34,6 +34,22 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		CurrentPepperVersion: cfg.Password.CurrentPepperVersion,
 	})
 	// jwtSigner := authinfra.NewJWTSigner(cfg)
+	accessExp, err := time.ParseDuration(cfg.JWTExpiresIn)
+	if err != nil {
+		log.Fatalf("invalid JWT_EXPIRES_IN: %v", err)
+	}
+
+	refreshExp, err := time.ParseDuration(cfg.JWTRefreshExpiresIn)
+	if err != nil {
+		log.Fatalf("invalid JWT_REFRESH_EXPIRES_IN: %v", err)
+	}
+
+	jwtSigner := security.NewJWTSigner(
+		cfg.JWTSecret,
+		cfg.JWTSecret,
+		accessExp,
+		refreshExp,
+	)
 
 	// =====================
 	// Repository
@@ -68,18 +84,6 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// =====================
 	// Usecases
 	// =====================
-
-	// Auth
-
-	accessExp, err := time.ParseDuration(cfg.JWTExpiresIn)
-	if err != nil {
-		log.Fatalf("invalid JWT_EXPIRES_IN: %v", err)
-	}
-
-	refreshExp, err := time.ParseDuration(cfg.JWTRefreshExpiresIn)
-	if err != nil {
-		log.Fatalf("invalid JWT_REFRESH_EXPIRES_IN: %v", err)
-	}
 
 	loginUC := authUC.NewLoginUsecase(
 		userRepo,
@@ -141,6 +145,7 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	http.RegisterRoutes(
 		router,
 		http.RouteDeps{
+			JwtSigner: &jwtSigner,
 			Validator: validator.New(),
 			Config:    cfg,
 

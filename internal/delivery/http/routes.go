@@ -76,7 +76,7 @@ func RegisterRoutes(r *gin.Engine, d RouteDeps) {
 	// PROTECTED ROUTES
 	// =====================================================
 	protected := r.Group("/v1")
-	protected.Use(middleware.JWTAuthMiddleware(d.Config.JWTSecret))
+	protected.Use(middleware.AuthMiddleware(*d.JwtSigner))
 
 	{
 		// auth

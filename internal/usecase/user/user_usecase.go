@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
 )
 
 var (
-	ErrUserNotFound   = errors.New("user not found")
-	ErrUsernameTaken  = errors.New("username already taken")
+	ErrUserNotFound  = errors.New("user not found")
+	ErrUsernameTaken = errors.New("username already taken")
 )
 
 type UserUsecase interface {

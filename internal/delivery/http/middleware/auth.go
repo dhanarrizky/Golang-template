@@ -4,36 +4,45 @@ import (
 	"net/http"
 	"strings"
 
+	ports "github.com/dhanarrizky/Golang-template/internal/ports/auth"
 	"github.com/gin-gonic/gin"
-	"github.com/dhanarrizky/Golang-template/pkg/auth"
 )
 
-const ContextUserIDKey = "auth.user_id"
-
 // AuthMiddleware validates access token and places user id into gin.Context
-func AuthMiddleware(signer *auth.Signer) gin.HandlerFunc {
+func AuthMiddleware(tokenSigner ports.TokenSigner) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		auth := c.GetHeader("Authorization")
-		if auth == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header required"})
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "missing authorization header",
+			})
 			return
 		}
-		parts := strings.SplitN(auth, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header"})
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid authorization format",
+			})
 			return
 		}
-		token := strings.TrimSpace(parts[1])
-		claims, err := signer.ParseToken(token)
+
+		tokenStr := parts[1]
+
+		payload, err := tokenSigner.VerifyAccessToken(tokenStr)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid or expired token",
+			})
 			return
 		}
-		c.Set(ContextUserIDKey, claims.UserID)
+
+		// 🔥 SET CLAIMS KE CONTEXT
+		c.Set("userID", payload.UserID)
+		c.Set("tokenID", payload.TokenID)
+		c.Set("tokenExpiresAt", payload.ExpiresAt)
+
 		c.Next()
 	}
 }
-
-
-// c.Set("user_id", userID)
-// c.Set("family_id", familyID) // dari refresh-token-family
