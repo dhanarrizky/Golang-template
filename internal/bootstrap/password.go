@@ -6,7 +6,7 @@ import (
 	"github.com/dhanarrizky/Golang-template/internal/config"
 
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/security"
-	"github.com/dhanarrizky/Golang-template/internal/ports"
+	ports "github.com/dhanarrizky/Golang-template/internal/ports/others"
 )
 
 // func InitPasswordHasher(cfg *config.Config) ports.PasswordHasher {

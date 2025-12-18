@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/dhanarrizky/Golang-template/internal/ports"
+	ports "github.com/dhanarrizky/Golang-template/internal/ports/users"
 	utils "github.com/dhanarrizky/Golang-template/pkg/utils"
 	"golang.org/x/crypto/argon2"
 )

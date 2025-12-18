@@ -1,4 +1,4 @@
-package ports
+package users
 
 // PasswordHasher mendefinisikan kontrak untuk hashing dan verifikasi password
 type PasswordHasher interface {

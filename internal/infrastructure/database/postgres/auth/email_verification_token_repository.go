@@ -6,7 +6,7 @@ import (
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/database/mappers/auth"
 	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
-	"github.com/dhanarrizky/Golang-template/internal/ports"
+	ports "github.com/dhanarrizky/Golang-template/internal/ports/mailer"
 	"gorm.io/gorm"
 )
 

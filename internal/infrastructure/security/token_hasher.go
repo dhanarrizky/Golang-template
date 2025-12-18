@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 
-	"github.com/dhanarrizky/Golang-template/internal/ports"
+	ports "github.com/dhanarrizky/Golang-template/internal/ports/others"
 )
 
 type HMACTokenHasher struct {

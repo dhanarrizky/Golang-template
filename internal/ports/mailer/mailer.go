@@ -1,4 +1,4 @@
-package ports
+package mailer
 
 import "context"
 
