@@ -7,15 +7,15 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	"github.com/dhanarrizky/Golang-template/internal/ports"
 )
 
 var (
-	ErrResetTokenInvalid   = errors.New("invalid or expired reset token")
-	ErrResetTokenUsed      = errors.New("reset token already used")
+	ErrResetTokenInvalid    = errors.New("invalid or expired reset token")
+	ErrResetTokenUsed       = errors.New("reset token already used")
 	ErrCurrentPasswordWrong = errors.New("current password is incorrect")
-	ErrPasswordSameAsOld   = errors.New("new password cannot be the same as old")
+	ErrPasswordSameAsOld    = errors.New("new password cannot be the same as old password")
 )
 
 type PasswordUsecase interface {
@@ -25,13 +25,13 @@ type PasswordUsecase interface {
 }
 
 type passwordUsecase struct {
-	userRepo          ports.UserRepository
-	resetTokenRepo    ports.PasswordResetTokenRepository
-	refreshRepo       ports.RefreshTokenRepository
-	sessionRepo       ports.UserSessionRepository
-	passwordHasher    ports.PasswordHasher
-	mailer            ports.Mailer // interface untuk kirim email
-	resetTokenExp     time.Duration
+	userRepo       ports.UserRepository
+	resetTokenRepo ports.PasswordResetTokenRepository
+	refreshRepo    ports.RefreshTokenRepository
+	sessionRepo    ports.UserSessionRepository
+	passwordHasher ports.PasswordHasher // interface untuk hash & compare (bisa bcrypt wrapper)
+	mailer         ports.Mailer
+	resetTokenExp  time.Duration
 }
 
 func NewPasswordUsecase(
@@ -54,90 +54,92 @@ func NewPasswordUsecase(
 	}
 }
 
-// Forgot: buat token + kirim email
+// ================= FORGOT PASSWORD =================
 func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
 	user, err := u.userRepo.FindByEmail(ctx, email)
 	if err != nil || user == nil {
-		// Silent: jangan kasih tahu kalau email tidak ada (security)
-		return nil
+		return nil // silent untuk security
 	}
 
 	// Generate secure random token
-	rawToken := make([]byte, 48) // 48 byte → ~64 char base64
-	_, err = rand.Read(rawToken)
-	if err != nil {
+	raw := make([]byte, 48)
+	if _, err := rand.Read(raw); err != nil {
 		return err
 	}
-	plainToken := base64.URLEncoding.EncodeToString(rawToken)
-	hashedToken := u.passwordHasher.Hash(plainToken) // hash sebelum simpan
+	plainToken := base64.URLEncoding.EncodeToString(raw)
+	hashedToken := u.passwordHasher.Hash(plainToken)
 
+	// ID:        uuid.NewString(),
+	// UserID:    user.ID,
+	// Token:     hashedToken,
+	// ExpiresAt: time.Now().Add(u.resetTokenExp),
+	// CreatedAt: time.Now(),
+	// Used:      false,
 	resetToken := domain.PasswordResetToken{
-		ID:        uuid.New().String(),
 		UserID:    user.ID,
-		Token:     hashedToken,
+		TokenHash: hashedToken,
 		ExpiresAt: time.Now().Add(u.resetTokenExp),
+		Used:      false,
 		CreatedAt: time.Now(),
 	}
 
-	if err := u.resetTokenRepo.Create(ctx, resetToken); err != nil {
+	if err := u.resetTokenRepo.Create(ctx, &resetToken); err != nil {
 		return err
 	}
 
-	// Kirim email (di real app: gunakan template + link frontend)
-	resetLink := "https://github.com/dhanarrizky/Golang-template.com/reset-password?token=" + plainToken
-	err = u.mailer.Send(ctx, user.Email, "Password Reset", "Click here to reset: "+resetLink)
-	if err != nil {
-		// Log error, tapi jangan fail request (user experience)
+	// Buat link reset (ganti dengan domain app kamu)
+	resetLink := "https://yourapp.com/reset-password?token=" + plainToken
+
+	// Kirim email
+	if err := u.mailer.Send(ctx, user.Email, "Reset Password", "Klik link untuk reset password: "+resetLink); err != nil {
+		// Log error tapi jangan fail request
 	}
 
 	return nil
 }
 
-// Reset: validasi token + update password + revoke all sessions
+// ================= RESET PASSWORD =================
 func (u *passwordUsecase) Reset(ctx context.Context, plainToken, newPassword string) error {
 	hashedToken := u.passwordHasher.Hash(plainToken)
 
 	token, err := u.resetTokenRepo.FindByToken(ctx, hashedToken)
-	if err != nil || token == nil {
+	if err != nil || token == nil || token.Used || time.Now().After(token.ExpiresAt) {
 		return ErrResetTokenInvalid
 	}
 
-	if token.Used {
-		return ErrResetTokenUsed
-	}
-
-	if time.Now().After(token.ExpiresAt) {
-		return ErrResetTokenInvalid
-	}
-
-	// Update password
+	// Hash new password
 	hashedNew := u.passwordHasher.Hash(newPassword)
+
 	if err := u.userRepo.UpdatePassword(ctx, token.UserID, hashedNew); err != nil {
 		return err
 	}
 
-	// Mark token used
-	u.resetTokenRepo.MarkAsUsed(ctx, hashedToken)
+	// Mark token as used
+	if err := u.resetTokenRepo.MarkAsUsed(ctx, token.ID); err != nil {
+		// log only
+	}
 
-	// CRITICAL: Revoke all sessions & refresh tokens (paksa logout semua device)
+	// Revoke all sessions & refresh tokens (force logout everywhere)
 	u.refreshRepo.RevokeAllByUser(ctx, token.UserID)
 	u.sessionRepo.RevokeAllByUser(ctx, token.UserID)
 
 	return nil
 }
 
-// Change: saat user sudah login
+// ================= CHANGE PASSWORD (logged in user) =================
 func (u *passwordUsecase) Change(ctx context.Context, userID, currentPassword, newPassword string) error {
 	user, err := u.userRepo.FindByID(ctx, userID)
 	if err != nil || user == nil {
 		return errors.New("user not found")
 	}
 
-	if !u.passwordHasher.Compare(currentPassword, user.HashedPassword) {
+	// Verify current password
+	if !u.passwordHasher.Compare(currentPassword, user.Password) {
 		return ErrCurrentPasswordWrong
 	}
 
-	if u.passwordHasher.Compare(newPassword, user.HashedPassword) {
+	// Prevent same password
+	if u.passwordHasher.Compare(newPassword, user.Password) {
 		return ErrPasswordSameAsOld
 	}
 
