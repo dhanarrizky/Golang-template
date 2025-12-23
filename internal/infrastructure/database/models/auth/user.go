@@ -9,9 +9,9 @@ import (
 type User struct {
 	ID uint64 `gorm:"primaryKey;autoIncrement;type:bigserial"`
 
-	Email         string `gorm:"size:255;uniqueIndex;not null"`
-	EmailVerified bool   `gorm:"default:false"`
-	PasswordHash  string `gorm:"type:text;not null"`
+	Email         string  `gorm:"size:255;uniqueIndex;not null"`
+	EmailVerified bool    `gorm:"default:false"`
+	PasswordHash  string  `gorm:"type:text;not null"`
 	Name          *string `gorm:"size:255"`
 
 	RoleID uint64 `gorm:"not null;index"`
@@ -24,7 +24,5 @@ type User struct {
 	// Relations (ORM only)
 	RefreshTokenFamilies []RefreshTokenFamily
 	RefreshTokens        []RefreshToken
-	PasswordResetTokens  []PasswordResetToken
-	EmailVerifyTokens    []EmailVerificationToken
 	Sessions             []UserSession
 }

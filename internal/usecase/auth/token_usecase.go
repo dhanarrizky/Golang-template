@@ -15,25 +15,43 @@ var (
 	ErrRefreshTokenNotFound    = errors.New("refresh token not found")
 	ErrRefreshTokenExpired     = errors.New("refresh token expired")
 	ErrRefreshTokenCompromised = errors.New("possible token reuse detected")
-	ErrRefreshTokenRevoked     = errors.New("refresh token has been revoked")
 )
+
+type LoginTokenResult struct {
+	AccessToken  string
+	AccessExp    time.Time
+	RefreshToken string
+	RefreshExp   time.Time
+}
 
 type RefreshResult struct {
 	AccessToken     string
 	AccessExp       time.Time
-	NewRefreshToken string // untuk rotation
+	NewRefreshToken string
 	NewRefreshExp   time.Time
 }
 
 type TokenUsecase interface {
-	Refresh(ctx context.Context, oldRefreshToken string, deviceName string) (*RefreshResult, error)
+	IssueForLogin(
+		ctx context.Context,
+		user domain.User,
+		deviceName string,
+	) (*LoginTokenResult, error)
+
+	Refresh(
+		ctx context.Context,
+		oldRefreshToken string,
+		deviceName string,
+	) (*RefreshResult, error)
+
 	Revoke(ctx context.Context, refreshToken string) error
-	RevokeFamily(ctx context.Context, familyID string) error // jika deteksi reuse
+	RevokeFamily(ctx context.Context, familyID string) error
 }
 
 type tokenUsecase struct {
 	refreshRepo ports.RefreshTokenRepository
 	sessionRepo ports.UserSessionRepository
+	userRepo    ports.UserRepository
 	jwtSecret   string
 	accessExp   time.Duration
 	refreshExp  time.Duration
@@ -42,28 +60,78 @@ type tokenUsecase struct {
 func NewTokenUsecase(
 	refreshRepo ports.RefreshTokenRepository,
 	sessionRepo ports.UserSessionRepository,
+	userRepo ports.UserRepository,
 	jwtSecret string,
 	accessExp, refreshExp time.Duration,
 ) TokenUsecase {
 	return &tokenUsecase{
 		refreshRepo: refreshRepo,
 		sessionRepo: sessionRepo,
+		userRepo:    userRepo,
 		jwtSecret:   jwtSecret,
 		accessExp:   accessExp,
 		refreshExp:  refreshExp,
 	}
 }
 
-func (u *tokenUsecase) Refresh(ctx context.Context, oldRefreshToken string, deviceName string) (*RefreshResult, error) {
-	// 1. Cari token
+// ================= ISSUE TOKEN (LOGIN) =================
+
+func (u *tokenUsecase) IssueForLogin(
+	ctx context.Context,
+	user domain.User,
+	deviceName string,
+) (*LoginTokenResult, error) {
+
+	familyID := uuid.New().String()
+	refreshToken := uuid.New().String()
+	refreshExp := time.Now().Add(u.refreshExp)
+
+	err := u.refreshRepo.Create(ctx, domain.RefreshToken{
+		TokenHash: refreshToken,
+		UserID:    user.ID,
+		FamilyID:  familyID,
+		IPAddress: deviceName,
+		ExpiresAt: refreshExp,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	u.sessionRepo.Create(ctx, domain.UserSession{
+		UserID:    user.ID,
+		FamilyID:  familyID,
+		IPAddress: deviceName,
+		LastUsed:  time.Now(),
+	})
+
+	accessToken, accessExp, err := u.generateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginTokenResult{
+		AccessToken:  accessToken,
+		AccessExp:    accessExp,
+		RefreshToken: refreshToken,
+		RefreshExp:   refreshExp,
+	}, nil
+}
+
+// ================= REFRESH TOKEN =================
+
+func (u *tokenUsecase) Refresh(
+	ctx context.Context,
+	oldRefreshToken string,
+	deviceName string,
+) (*RefreshResult, error) {
+
 	token, err := u.refreshRepo.FindByToken(ctx, oldRefreshToken)
 	if err != nil || token == nil {
 		return nil, ErrRefreshTokenNotFound
 	}
 
-	if token.Revoked {
-		// Jika sudah direvoke → kemungkinan reuse → revoke seluruh family
-		u.revokeFamilyAndSessions(ctx, token.FamilyID)
+	if token.Revoked || token.Used {
+		u.RevokeFamily(ctx, token.FamilyID)
 		return nil, ErrRefreshTokenCompromised
 	}
 
@@ -71,52 +139,33 @@ func (u *tokenUsecase) Refresh(ctx context.Context, oldRefreshToken string, devi
 		return nil, ErrRefreshTokenExpired
 	}
 
-	// 2. Cek reuse detection: apakah token ini sudah pernah dipakai untuk refresh?
-	if token.Used {
-		// Token reuse detected → revoke entire family
-		u.revokeFamilyAndSessions(ctx, token.FamilyID)
-		return nil, ErrRefreshTokenCompromised
-	}
-
-	// 3. Mark as used (untuk deteksi reuse)
 	if err := u.refreshRepo.MarkAsUsed(ctx, oldRefreshToken); err != nil {
 		return nil, err
 	}
 
-	// 4. Rotate: buat refresh token baru (same family)
 	newRefreshToken := uuid.New().String()
-	newExpiresAt := time.Now().Add(u.refreshExp)
+	newRefreshExp := time.Now().Add(u.refreshExp)
 
 	err = u.refreshRepo.Create(ctx, domain.RefreshToken{
-		Token:     newRefreshToken,
+		TokenHash: newRefreshToken,
 		UserID:    token.UserID,
 		FamilyID:  token.FamilyID,
-		Device:    deviceName,
-		ExpiresAt: newExpiresAt,
+		UserAgent: deviceName,
+		IPAddress: deviceName,
+		ExpiresAt: newRefreshExp,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// 5. Update last used session
 	u.sessionRepo.UpdateLastUsed(ctx, token.UserID, token.FamilyID, time.Now())
 
-	// 6. Generate new access token
-	user, err := u.refreshRepo.GetUserFromToken(ctx, oldRefreshToken) // atau inject user repo jika perlu
+	user, err := u.userRepo.FindByID(ctx, token.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	accessExp := time.Now().Add(u.accessExp)
-	claims := jwt.MapClaims{
-		"sub":   user.ID,
-		"email": user.Email,
-		"roles": user.Roles,
-		"exp":   accessExp.Unix(),
-		"iat":   time.Now().Unix(),
-	}
-	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	accessToken, err := jwtToken.SignedString([]byte(u.jwtSecret))
+	accessToken, accessExp, err := u.generateAccessToken(*user)
 	if err != nil {
 		return nil, err
 	}
@@ -125,17 +174,43 @@ func (u *tokenUsecase) Refresh(ctx context.Context, oldRefreshToken string, devi
 		AccessToken:     accessToken,
 		AccessExp:       accessExp,
 		NewRefreshToken: newRefreshToken,
-		NewRefreshExp:   newExpiresAt,
+		NewRefreshExp:   newRefreshExp,
 	}, nil
 }
+
+// ================= REVOKE =================
 
 func (u *tokenUsecase) Revoke(ctx context.Context, refreshToken string) error {
 	return u.refreshRepo.Revoke(ctx, refreshToken)
 }
 
-func (u *tokenUsecase) revokeFamilyAndSessions(ctx context.Context, familyID string) {
-	// Revoke semua token dalam family
+func (u *tokenUsecase) RevokeFamily(ctx context.Context, familyID string) error {
 	u.refreshRepo.RevokeFamily(ctx, familyID)
-	// Optional: hapus session terkait atau mark inactive
 	u.sessionRepo.RevokeByFamily(ctx, familyID)
+	return nil
+}
+
+// ================= HELPERS =================
+
+func (u *tokenUsecase) generateAccessToken(
+	user domain.User,
+) (string, time.Time, error) {
+
+	exp := time.Now().Add(u.accessExp)
+
+	claims := jwt.MapClaims{
+		"sub":   user.ID,
+		"email": user.Email,
+		"roles": user.RoleID,
+		"exp":   exp.Unix(),
+		"iat":   time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString([]byte(u.jwtSecret))
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return signed, exp, nil
 }

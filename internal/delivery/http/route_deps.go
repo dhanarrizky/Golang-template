@@ -16,7 +16,6 @@ type RouteDeps struct {
 	Config    *config.Config
 
 	// Auth usecases
-	EmailUC    authUC.EmailUsecase
 	LoginUC    authUC.LoginUsecase
 	PasswordUC authUC.PasswordUsecase
 	SessionUC  authUC.SessionUsecase

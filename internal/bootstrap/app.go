@@ -4,17 +4,15 @@ import (
 	"log"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-
 	"github.com/dhanarrizky/Golang-template/internal/config"
-	http "github.com/dhanarrizky/Golang-template/internal/delivery/http"
+	"github.com/dhanarrizky/Golang-template/internal/delivery/http"
 	authRepo "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/postgres/auth"
-	"github.com/dhanarrizky/Golang-template/internal/infrastructure/mailer"
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/security"
 	authUC "github.com/dhanarrizky/Golang-template/internal/usecase/auth"
 	roleUC "github.com/dhanarrizky/Golang-template/internal/usecase/roles"
 	userUC "github.com/dhanarrizky/Golang-template/internal/usecase/user"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 func InitHTTPApp(cfg *config.Config) *gin.Engine {
@@ -56,7 +54,6 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// =====================
 
 	// Auth
-	emailRepo := authRepo.NewEmailVerificationTokenRepository(db)
 	loginAttemptRepo := authRepo.NewLoginAttemptRepository(db)
 	passwordResetTokenRepo := authRepo.NewPasswordResetTokenRepository(db)
 	// refreshTokenFamilyRepo := authRepo.NewRefreshTokenFamilyRepository(db)
@@ -64,22 +61,6 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	roleRepo := authRepo.NewRoleRepository(db)
 	userRepo := authRepo.NewUserRepository(db)
 	sessionRepo := authRepo.NewUserSessionRepository(db)
-
-	// =====================
-	// Mailer
-	// =====================
-	mailer, err := mailer.NewSMTPMailer(
-		cfg.SMTPHost,
-		cfg.SMTPPort,
-		cfg.SMTPUsername,
-		cfg.SMTPPassword,
-		cfg.SMTPFromName,
-		cfg.SMTPFromAddress,
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// =====================
 	// Usecases
@@ -96,14 +77,6 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		refreshExp,
 	)
 
-	emailUC := authUC.NewEmailUsecase(
-		userRepo,
-		emailRepo,
-		tokenHasher,
-		mailer,
-		accessExp,
-	)
-
 	passwordUC := authUC.NewPasswordUsecase(
 		userRepo,
 		passwordResetTokenRepo,
@@ -111,7 +84,7 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		sessionRepo,
 		passwordHasher,
 		mailer,
-		accessExp, // harusnya bukan access exp
+		accessExp,
 	)
 
 	sessionUC := authUC.NewSessionUsecase(
@@ -149,7 +122,6 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 			Validator: validator.New(),
 			Config:    cfg,
 
-			EmailUC:    emailUC,
 			LoginUC:    loginUC,
 			PasswordUC: passwordUC,
 			SessionUC:  sessionUC,

@@ -15,7 +15,6 @@ func NewPostgresDB(dsn string) (*gorm.DB, error) {
 	err = db.AutoMigrate(
 		&authModels.User{},
 		&authModels.Role{},
-		&authModels.EmailVerificationToken{},
 		&authModels.PasswordResetToken{},
 		&authModels.RefreshTokenFamily{},
 		&authModels.RefreshToken{},
