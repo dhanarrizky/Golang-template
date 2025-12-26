@@ -1,56 +1,56 @@
 package repositories
 
-import (
-	"context"
+// import (
+// 	"context"
 
-	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
-	mapper "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/mappers/auth"
-	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
-	ports "github.com/dhanarrizky/Golang-template/internal/ports/auth"
-	"gorm.io/gorm"
-)
+// 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
+// 	mapper "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/mappers/auth"
+// 	model "github.com/dhanarrizky/Golang-template/internal/infrastructure/database/models/auth"
+// 	ports "github.com/dhanarrizky/Golang-template/internal/ports/auth"
+// 	"gorm.io/gorm"
+// )
 
-type passwordResetTokenRepository struct {
-	db *gorm.DB
-}
+// type passwordResetTokenRepository struct {
+// 	db *gorm.DB
+// }
 
-func NewPasswordResetTokenRepository(db *gorm.DB) ports.PasswordResetTokenRepository {
-	return &passwordResetTokenRepository{db: db}
-}
+// func NewPasswordResetTokenRepository(db *gorm.DB) ports.PasswordResetTokenRepository {
+// 	return &passwordResetTokenRepository{db: db}
+// }
 
-func (r *passwordResetTokenRepository) Create(
-	ctx context.Context,
-	token *domain.PasswordResetToken,
-) error {
+// func (r *passwordResetTokenRepository) Create(
+// 	ctx context.Context,
+// 	token *domain.PasswordResetToken,
+// ) error {
 
-	m := mapper.ToModelPasswordResetToken(token)
-	return r.db.WithContext(ctx).Create(m).Error
-}
+// 	m := mapper.ToModelPasswordResetToken(token)
+// 	return r.db.WithContext(ctx).Create(m).Error
+// }
 
-func (r *passwordResetTokenRepository) GetByTokenHash(
-	ctx context.Context,
-	hash string,
-) (*domain.PasswordResetToken, error) {
+// func (r *passwordResetTokenRepository) GetByTokenHash(
+// 	ctx context.Context,
+// 	hash string,
+// ) (*domain.PasswordResetToken, error) {
 
-	var m model.PasswordResetToken
+// 	var m model.PasswordResetToken
 
-	err := r.db.WithContext(ctx).
-		Where("token_hash = ?", hash).
-		First(&m).Error
-	if err != nil {
-		return nil, err
-	}
+// 	err := r.db.WithContext(ctx).
+// 		Where("token_hash = ?", hash).
+// 		First(&m).Error
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return mapper.ToDomainPasswordResetToken(&m), nil
-}
+// 	return mapper.ToDomainPasswordResetToken(&m), nil
+// }
 
-func (r *passwordResetTokenRepository) MarkUsed(
-	ctx context.Context,
-	id uint64,
-) error {
+// func (r *passwordResetTokenRepository) MarkUsed(
+// 	ctx context.Context,
+// 	id uint64,
+// ) error {
 
-	return r.db.WithContext(ctx).
-		Model(&model.PasswordResetToken{}).
-		Where("id = ?", id).
-		Update("used", true).Error
-}
+// 	return r.db.WithContext(ctx).
+// 		Model(&model.PasswordResetToken{}).
+// 		Where("id = ?", id).
+// 		Update("used", true).Error
+// }

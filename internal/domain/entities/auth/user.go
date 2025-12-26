@@ -5,12 +5,14 @@ import "time"
 type User struct {
 	ID uint64
 
+	Username      string
 	Email         string
 	EmailVerified bool
 	PasswordHash  string
 	Name          *string
 
 	RoleID uint64
+	Locked bool
 
 	CreatedAt time.Time
 	UpdatedAt *time.Time

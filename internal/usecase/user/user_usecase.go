@@ -6,9 +6,7 @@ import (
 
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	authPorts "github.com/dhanarrizky/Golang-template/internal/ports/auth"
-	mailerPorts "github.com/dhanarrizky/Golang-template/internal/ports/mailer"
 	userPorts "github.com/dhanarrizky/Golang-template/internal/ports/users"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -29,16 +27,19 @@ type UserUsecase interface {
 }
 
 type userUsecase struct {
-	userRepo    userPorts.UserRepository
-	mailRepo    mailerPorts.EmailVerificationTokenRepository
-	sessionRepo userPorts.UserSessionRepository
-	refreshRepo authPorts.RefreshTokenRepository
+	userRepo          userPorts.UserRepository
+	sessionRepo       userPorts.UserSessionRepository
+	passwordHasher    userPorts.PasswordHasher
+	refreshRepo       authPorts.RefreshTokenRepository
+	refreshFamilyRepo authPorts.RefreshTokenFamilyRepository
 }
 
 func NewUserUsecase(
 	userRepo userPorts.UserRepository,
 	sessionRepo userPorts.UserSessionRepository,
+	passwordHasher userPorts.PasswordHasher,
 	refreshRepo authPorts.RefreshTokenRepository,
+	refreshFamilyRepo authPorts.RefreshTokenFamilyRepository,
 ) UserUsecase {
 	return &userUsecase{
 		userRepo:    userRepo,
@@ -54,23 +55,23 @@ func (u *userUsecase) Register(ctx context.Context, username, email, password st
 	}
 
 	// Check uniqueness
-	if exists, _ := u.userRepo.ExistsByUsername(ctx, username); exists {
+	if exists, _ := u.userRepo.GetByEmailOrUsername(ctx, username); exists != nil {
 		return nil, ErrUsernameTaken
 	}
-	if exists, _ := u.userRepo.ExistsByEmail(ctx, email); exists {
+	if exists, _ := u.userRepo.GetByEmail(ctx, email); exists != nil {
 		return nil, ErrEmailTaken
 	}
 
 	// Hash password using bcrypt (bukan dari PasswordHasher port)
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := u.passwordHasher.HashPassword([]byte(password))
 	if err != nil {
 		return nil, err
 	}
 
 	user := &domain.User{
-		Username: username,
-		Email:    email,
-		Password: string(hashedPassword), // asumsikan field di domain adalah Password atau HashedPassword
+		Username:     username,
+		Email:        email,
+		PasswordHash: hashedPassword, // asumsikan field di domain adalah Password atau HashedPassword
 	}
 
 	if err := u.userRepo.Create(ctx, user); err != nil {
@@ -78,27 +79,27 @@ func (u *userUsecase) Register(ctx context.Context, username, email, password st
 	}
 
 	// Kosongkan password sebelum return
-	user.Password = ""
+	user.PasswordHash = ""
 	return user, nil
 }
 
 // ================= GET ME =================
 func (u *userUsecase) GetMe(ctx context.Context, userID string) (*domain.User, error) {
-	user, err := u.userRepo.FindByID(ctx, userID)
+	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil || user == nil {
 		return nil, ErrUserNotFound
 	}
-	user.Password = ""
+	user.PasswordHash = ""
 	return user, nil
 }
 
 // ================= GET BY ID =================
 func (u *userUsecase) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
-	user, err := u.userRepo.FindByID(ctx, userID)
+	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil || user == nil {
 		return nil, ErrUserNotFound
 	}
-	user.Password = ""
+	user.PasswordHash = ""
 	return user, nil
 }
 
@@ -122,7 +123,7 @@ func (u *userUsecase) UpdateUser(ctx context.Context, userID, username, email st
 		return nil
 	}
 
-	user, err := u.userRepo.FindByID(ctx, userID)
+	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil || user == nil {
 		return ErrUserNotFound
 	}
@@ -146,21 +147,29 @@ func (u *userUsecase) UpdateUser(ctx context.Context, userID, username, email st
 
 // ================= SOFT DELETE =================
 func (u *userUsecase) SoftDelete(ctx context.Context, userID string) error {
-	if err := u.userRepo.SoftDelete(ctx, userID); err != nil {
+	families, err := u.refreshFamilyRepo.GetByUserID(ctx, userID)
+	if err != nil {
 		return err
 	}
 
-	// Revoke all sessions & tokens
-	u.refreshRepo.RevokeAllByUser(ctx, userID)
-	u.sessionRepo.RevokeAllByUser(ctx, userID)
-
+	for _, family := range families {
+		_ = u.refreshRepo.RevokeByFamily(ctx, family.ID)
+		_ = u.refreshFamilyRepo.Revoke(ctx, family.ID)
+	}
 	return nil
 }
 
 // ================= PERMANENT DELETE (admin) =================
 func (u *userUsecase) PermanentDelete(ctx context.Context, userID string) error {
-	u.refreshRepo.RevokeAllByUser(ctx, userID)
-	u.sessionRepo.RevokeAllByUser(ctx, userID)
+	families, err := u.refreshFamilyRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
 
-	return u.userRepo.PermanentDelete(ctx, userID)
+	for _, family := range families {
+		_ = u.refreshRepo.RevokeByFamily(ctx, family.ID)
+		_ = u.refreshFamilyRepo.Revoke(ctx, family.ID)
+	}
+
+	return nil
 }

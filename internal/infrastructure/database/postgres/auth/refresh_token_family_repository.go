@@ -44,6 +44,33 @@ func (r *refreshTokenFamilyRepository) GetByID(
 	return mapper.ToDomainRefreshTokenFamily(&m), nil
 }
 
+func (r *refreshTokenFamilyRepository) GetByUserID(
+	ctx context.Context,
+	userID uint64,
+) ([]*domain.RefreshTokenFamily, error) {
+
+	var models []model.RefreshTokenFamily
+
+	err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Find(&models).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	families := make([]*domain.RefreshTokenFamily, 0, len(models))
+	for i := range models {
+		families = append(
+			families,
+			mapper.ToDomainRefreshTokenFamily(&models[i]),
+		)
+	}
+
+	return families, nil
+}
+
 func (r *refreshTokenFamilyRepository) Revoke(
 	ctx context.Context,
 	id uint64,

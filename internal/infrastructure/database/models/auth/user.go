@@ -16,6 +16,7 @@ type User struct {
 
 	RoleID uint64 `gorm:"not null;index"`
 	Role   Role   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	Locked bool   `gorm:"default:false"`
 
 	CreatedAt time.Time
 	UpdatedAt *time.Time

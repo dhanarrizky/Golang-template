@@ -53,6 +53,28 @@ func (r *userRepository) GetByEmail(
 	return mapper.ToDomainUser(&m), nil
 }
 
+func (r *userRepository) GetByEmailOrUsername(
+	ctx context.Context,
+	identifier string,
+) (*domain.User, error) {
+
+	var m model.User
+
+	err := r.db.WithContext(ctx).
+		Where(
+			"email = ? OR username = ?",
+			identifier,
+			identifier,
+		).
+		First(&m).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.ToDomainUser(&m), nil
+}
+
 func (r *userRepository) Create(
 	ctx context.Context,
 	user *domain.User,
@@ -69,6 +91,72 @@ func (r *userRepository) Update(
 
 	m := mapper.ToModelUser(user)
 	return r.db.WithContext(ctx).Save(m).Error
+}
+
+func (r *userRepository) UpdatePassword(
+	ctx context.Context,
+	id uint64,
+	hashedPassword string,
+) error {
+
+	return r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"password_hash": hashedPassword,
+			"updated_at":    time.Now(),
+		}).Error
+}
+
+func (r *userRepository) UpdateUsername(
+	ctx context.Context,
+	id uint64,
+	username string,
+) error {
+
+	return r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"password_hash": username,
+			"updated_at":    time.Now(),
+		}).Error
+}
+
+func (r *userRepository) ExistsByUsernameExceptID(
+	ctx context.Context,
+	username string,
+	exceptID uint64,
+) (bool, error) {
+
+	var exists bool
+
+	err := r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Select("1").
+		Where("username = ? AND id <> ?", username, exceptID).
+		Limit(1).
+		Scan(&exists).Error
+
+	return exists, err
+}
+
+func (r *userRepository) ExistsByEmailExceptID(
+	ctx context.Context,
+	email string,
+	exceptID uint64,
+) (bool, error) {
+
+	var exists bool
+
+	err := r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Select("1").
+		Where("email = ? AND id <> ?", email, exceptID).
+		Limit(1).
+		Scan(&exists).Error
+
+	return exists, err
 }
 
 func (r *userRepository) SoftDelete(

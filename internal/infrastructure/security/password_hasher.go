@@ -47,12 +47,12 @@ func NewPasswordHasher(config *PasswordConfig) ports.PasswordHasher {
 	return &argon2Hasher{config: config}
 }
 
-func (a *argon2Hasher) HashPassword(password []byte) (string, int, error) {
+func (a *argon2Hasher) HashPassword(password []byte) (string, error) {
 	cfg := a.config
 
 	salt, err := utils.RandomBytes(cfg.SaltLength)
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
 
 	pepver := cfg.CurrentPepperVersion
@@ -83,7 +83,7 @@ func (a *argon2Hasher) HashPassword(password []byte) (string, int, error) {
 	utils.ZeroBytes(hash)
 	utils.ZeroBytes(salt)
 
-	return encoded, pepver, nil
+	return encoded, nil
 }
 
 func (a *argon2Hasher) VerifyPassword(password []byte, encoded string) (bool, bool, error) {

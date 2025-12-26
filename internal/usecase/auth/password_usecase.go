@@ -8,11 +8,14 @@ import (
 	"time"
 
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
-	"github.com/dhanarrizky/Golang-template/internal/ports"
+	authPorts "github.com/dhanarrizky/Golang-template/internal/ports/auth"
+	userPorts "github.com/dhanarrizky/Golang-template/internal/ports/users"
 )
 
 var (
 	ErrResetTokenInvalid    = errors.New("invalid or expired reset token")
+	ErrUsernameNotFound     = errors.New("username not found")
+	ErrHashingPass          = errors.New("internal server error hash password")
 	ErrResetTokenUsed       = errors.New("reset token already used")
 	ErrCurrentPasswordWrong = errors.New("current password is incorrect")
 	ErrPasswordSameAsOld    = errors.New("new password cannot be the same as old password")
@@ -25,22 +28,22 @@ type PasswordUsecase interface {
 }
 
 type passwordUsecase struct {
-	userRepo       ports.UserRepository
-	resetTokenRepo ports.PasswordResetTokenRepository
-	refreshRepo    ports.RefreshTokenRepository
-	sessionRepo    ports.UserSessionRepository
-	passwordHasher ports.PasswordHasher // interface untuk hash & compare (bisa bcrypt wrapper)
-	mailer         ports.Mailer
-	resetTokenExp  time.Duration
+	userRepo          userPorts.UserRepository
+	resetTokenRepo    authPorts.PasswordResetTokenRepository
+	refreshRepo       authPorts.RefreshTokenRepository
+	refreshFamilyRepo authPorts.RefreshTokenFamilyRepository
+	sessionRepo       userPorts.UserSessionRepository
+	passwordHasher    userPorts.PasswordHasher
+	resetTokenExp     time.Duration
 }
 
 func NewPasswordUsecase(
-	userRepo ports.UserRepository,
-	resetTokenRepo ports.PasswordResetTokenRepository,
-	refreshRepo ports.RefreshTokenRepository,
-	sessionRepo ports.UserSessionRepository,
-	passwordHasher ports.PasswordHasher,
-	mailer ports.Mailer,
+	userRepo userPorts.UserRepository,
+	resetTokenRepo authPorts.PasswordResetTokenRepository,
+	refreshRepo authPorts.RefreshTokenRepository,
+	refreshFamilyRepo authPorts.RefreshTokenFamilyRepository,
+	sessionRepo userPorts.UserSessionRepository,
+	passwordHasher userPorts.PasswordHasher,
 	resetTokenExp time.Duration,
 ) PasswordUsecase {
 	return &passwordUsecase{
@@ -49,14 +52,13 @@ func NewPasswordUsecase(
 		refreshRepo:    refreshRepo,
 		sessionRepo:    sessionRepo,
 		passwordHasher: passwordHasher,
-		mailer:         mailer,
 		resetTokenExp:  resetTokenExp,
 	}
 }
 
 // ================= FORGOT PASSWORD =================
 func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
-	user, err := u.userRepo.FindByEmail(ctx, email)
+	user, err := u.userRepo.GetByEmail(ctx, email)
 	if err != nil || user == nil {
 		return nil // silent untuk security
 	}
@@ -67,7 +69,7 @@ func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
 		return err
 	}
 	plainToken := base64.URLEncoding.EncodeToString(raw)
-	hashedToken := u.passwordHasher.Hash(plainToken)
+	hashedToken := u.passwordHasher.has(plainToken)
 
 	// ID:        uuid.NewString(),
 	// UserID:    user.ID,
@@ -87,62 +89,63 @@ func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
 		return err
 	}
 
-	// Buat link reset (ganti dengan domain app kamu)
-	resetLink := "https://yourapp.com/reset-password?token=" + plainToken
-
-	// Kirim email
-	if err := u.mailer.Send(ctx, user.Email, "Reset Password", "Klik link untuk reset password: "+resetLink); err != nil {
-		// Log error tapi jangan fail request
-	}
-
 	return nil
 }
 
 // ================= RESET PASSWORD =================
-func (u *passwordUsecase) Reset(ctx context.Context, plainToken, newPassword string) error {
-	hashedToken := u.passwordHasher.Hash(plainToken)
-
-	token, err := u.resetTokenRepo.FindByToken(ctx, hashedToken)
-	if err != nil || token == nil || token.Used || time.Now().After(token.ExpiresAt) {
-		return ErrResetTokenInvalid
+func (u *passwordUsecase) Reset(ctx context.Context, username, newPassword string) error {
+	user, err := u.userRepo.GetByEmailOrUsername(ctx, username)
+	if err != nil || user == nil {
+		return ErrUsernameNotFound
 	}
 
 	// Hash new password
-	hashedNew := u.passwordHasher.Hash(newPassword)
+	hashedNew, err := u.passwordHasher.HashPassword([]byte(newPassword))
+	if err != nil {
+		return ErrHashingPass
+	}
 
-	if err := u.userRepo.UpdatePassword(ctx, token.UserID, hashedNew); err != nil {
+	if err := u.userRepo.UpdatePassword(ctx, user.ID, hashedNew); err != nil {
 		return err
 	}
 
-	// Mark token as used
-	if err := u.resetTokenRepo.MarkAsUsed(ctx, token.ID); err != nil {
-		// log only
+	// Revoke all sessions & refresh tokens (force logout everywhere)
+	families, err := u.refreshFamilyRepo.GetByUserID(ctx, user.ID)
+	if err != nil {
+		return err
 	}
 
-	// Revoke all sessions & refresh tokens (force logout everywhere)
-	u.refreshRepo.RevokeAllByUser(ctx, token.UserID)
-	u.sessionRepo.RevokeAllByUser(ctx, token.UserID)
+	for _, family := range families {
+		// revoke semua refresh token dalam family
+		_ = u.refreshRepo.RevokeByFamily(ctx, family.ID)
+
+		// revoke family itu sendiri
+		_ = u.refreshFamilyRepo.Revoke(ctx, family.ID)
+	}
 
 	return nil
 }
 
 // ================= CHANGE PASSWORD (logged in user) =================
 func (u *passwordUsecase) Change(ctx context.Context, userID, currentPassword, newPassword string) error {
-	user, err := u.userRepo.FindByID(ctx, userID)
+	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil || user == nil {
 		return errors.New("user not found")
 	}
 
 	// Verify current password
-	if !u.passwordHasher.Compare(currentPassword, user.Password) {
+	if !u.passwordHasher.VerifyPassword(currentPassword, user.Password) {
 		return ErrCurrentPasswordWrong
 	}
 
 	// Prevent same password
-	if u.passwordHasher.Compare(newPassword, user.Password) {
+	if u.passwordHasher.VerifyPassword(newPassword, user.Password) {
 		return ErrPasswordSameAsOld
 	}
 
-	hashedNew := u.passwordHasher.Hash(newPassword)
+	hashedNew, err := u.passwordHasher.HashPassword([]byte(newPassword))
+	if err != nil {
+		return ErrHashingPass
+	}
 	return u.userRepo.UpdatePassword(ctx, userID, hashedNew)
 }
