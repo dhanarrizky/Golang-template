@@ -74,6 +74,16 @@ type Config struct {
 	SwaggerEnable   bool   `mapstructure:"SWAGGER_ENABLE"`
 	SwaggerHost     string `mapstructure:"SWAGGER_HOST"`
 	SwaggerBasePath string `mapstructure:"SWAGGER_BASE_PATH"`
+
+	// =========================
+	// key - PublicIDCodec
+	// =========================
+	PublicIdAesKey string `mapstructure:"PUBLIC_ID_AES_KEY"`
+
+	// =========================
+	// key - PublicIDCodec
+	// =========================
+	TokenHmacSecret string `mapstructure:"TOKEN_HMAC_SECRET"`
 }
 
 // =========================

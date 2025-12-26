@@ -22,6 +22,63 @@ func NewUserHandler(usecase user.UserUsecase, validate *validator.Validate) *Use
 	}
 }
 
+// GET /users
+func (h *UserHandler) List(c *gin.Context) {
+	users, err := h.usecase.GetList(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Message: "Failed to fetch users",
+		})
+		return
+	}
+
+	items := make([]dto.UserResponse, 0, len(users))
+	for _, u := range users {
+		items = append(items, dto.UserResponse{
+			ID:        u.ID,
+			Email:     u.Email,
+			Username:  u.Username,
+			CreatedAt: u.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, dto.UserListResponse{
+		Items: items,
+	})
+}
+
+// POST /users
+func (h *UserHandler) Create(c *gin.Context) {
+	var req dto.CreateUserRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "Invalid request"})
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "Validation failed"})
+		return
+	}
+
+	user, err := h.usecase.Register(
+		c.Request.Context(),
+		req.Email,
+		req.Username,
+		req.Password,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, dto.CreateUserResponse{
+		ID:       user.ID,
+		Email:    user.Email,
+		Username: user.Username,
+	})
+}
+
 // GET /users/me
 func (h *UserHandler) Me(c *gin.Context) {
 	userID := c.GetString("user_id")
@@ -38,6 +95,24 @@ func (h *UserHandler) Me(c *gin.Context) {
 		Username:      user.Username,
 		EmailVerified: user.EmailVerified,
 		CreatedAt:     user.CreatedAt,
+	})
+}
+
+// GET /users/:id
+func (h *UserHandler) GetByID(c *gin.Context) {
+	id := c.Param("id")
+
+	user, err := h.usecase.GetUserByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		CreatedAt: user.CreatedAt,
 	})
 }
 
@@ -77,5 +152,21 @@ func (h *UserHandler) Delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.DeleteAccountResponse{
 		Message: "Account deleted successfully",
+	})
+}
+
+// DELETE /users/:id/permanent
+func (h *UserHandler) PermanentDelete(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := h.usecase.PermanentDelete(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Message: "Failed to permanently delete user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MessageResponse{
+		Message: "User permanently deleted",
 	})
 }

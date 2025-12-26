@@ -3,12 +3,15 @@ package auth
 import "time"
 
 type LoginAttempt struct {
-	ID uint
+	ID       uint64
+	Identity string
+	UserID   *uint64
 
-	Email     string
 	IPAddress string
-	Success   bool
 	UserAgent string
+
+	Success bool
+	Reason  string
 
 	CreatedAt time.Time
 }

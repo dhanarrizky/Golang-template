@@ -25,6 +25,9 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*auth.User, error)
 	GetByEmailOrUsername(ctx context.Context, identifier string) (*auth.User, error)
 
+	// 🔹 NEW
+	GetList(ctx context.Context) ([]*auth.User, error)
+
 	Create(ctx context.Context, user *auth.User) error
 	Update(ctx context.Context, user *auth.User) error
 	UpdatePassword(ctx context.Context, id uint64, hashedPassword string) error

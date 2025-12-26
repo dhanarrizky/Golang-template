@@ -30,6 +30,11 @@ func RegisterRoutes(r *gin.Engine, d RouteDeps) {
 		d.Validator,
 	)
 
+	tokenHandler := auth.NewTokenHandler(
+		d.TokenUC,
+		d.Config.JWTSecret,
+	)
+
 	passwordHandler := auth.NewPasswordHandler(
 		d.PasswordUC,
 		d.Validator,
@@ -51,7 +56,7 @@ func RegisterRoutes(r *gin.Engine, d RouteDeps) {
 	public := r.Group("/v1")
 	{
 		public.POST("/auth/login", authHandler.Login)
-		public.POST("/auth/refresh", authHandler.Refresh)
+		public.POST("/auth/refresh", tokenHandler.Refresh)
 
 		// register
 		public.POST("/users", userHandler.Create)
@@ -86,7 +91,7 @@ func RegisterRoutes(r *gin.Engine, d RouteDeps) {
 		// user management
 		admin.GET("/users", userHandler.List) // optional
 		admin.GET("/users/:id", userHandler.GetByID)
-		admin.PUT("/users/:id", userHandler.UpdateByAdmin)
+		admin.PUT("/users/:id", userHandler.Update)
 		admin.DELETE("/users/:id/permanent", userHandler.PermanentDelete)
 
 		// role
@@ -94,7 +99,6 @@ func RegisterRoutes(r *gin.Engine, d RouteDeps) {
 		admin.POST("/roles", roleHandler.Create)
 		admin.PUT("/roles/:id", roleHandler.Update)
 		admin.DELETE("/roles/:id", roleHandler.Delete)
-		admin.POST("/roles/assign", roleHandler.Assign)
 	}
 
 }

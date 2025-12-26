@@ -9,10 +9,12 @@ import (
 
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	authPorts "github.com/dhanarrizky/Golang-template/internal/ports/auth"
+	otherPorts "github.com/dhanarrizky/Golang-template/internal/ports/others"
 	userPorts "github.com/dhanarrizky/Golang-template/internal/ports/users"
 )
 
 var (
+	ErrDecode               = errors.New("internal server decode")
 	ErrResetTokenInvalid    = errors.New("invalid or expired reset token")
 	ErrUsernameNotFound     = errors.New("username not found")
 	ErrHashingPass          = errors.New("internal server error hash password")
@@ -34,7 +36,9 @@ type passwordUsecase struct {
 	refreshFamilyRepo authPorts.RefreshTokenFamilyRepository
 	sessionRepo       userPorts.UserSessionRepository
 	passwordHasher    userPorts.PasswordHasher
+	codecHasher       otherPorts.PublicIDCodec
 	resetTokenExp     time.Duration
+	idCodec           otherPorts.PublicIDCodec
 }
 
 func NewPasswordUsecase(
@@ -45,6 +49,7 @@ func NewPasswordUsecase(
 	sessionRepo userPorts.UserSessionRepository,
 	passwordHasher userPorts.PasswordHasher,
 	resetTokenExp time.Duration,
+	idCodec otherPorts.PublicIDCodec,
 ) PasswordUsecase {
 	return &passwordUsecase{
 		userRepo:       userRepo,
@@ -68,8 +73,9 @@ func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
 	if _, err := rand.Read(raw); err != nil {
 		return err
 	}
+
 	plainToken := base64.URLEncoding.EncodeToString(raw)
-	hashedToken := u.passwordHasher.has(plainToken)
+	hashedToken := u.codecHasher.Encode(plainToken)
 
 	// ID:        uuid.NewString(),
 	// UserID:    user.ID,
@@ -128,18 +134,39 @@ func (u *passwordUsecase) Reset(ctx context.Context, username, newPassword strin
 
 // ================= CHANGE PASSWORD (logged in user) =================
 func (u *passwordUsecase) Change(ctx context.Context, userID, currentPassword, newPassword string) error {
-	user, err := u.userRepo.GetByID(ctx, userID)
+	id, err := u.idCodec.Decode(userID)
+	if err != nil {
+		return ErrDecode
+	}
+
+	user, err := u.userRepo.GetByID(ctx, id)
 	if err != nil || user == nil {
 		return errors.New("user not found")
 	}
 
 	// Verify current password
-	if !u.passwordHasher.VerifyPassword(currentPassword, user.Password) {
+	match, _, err := u.passwordHasher.VerifyPassword(
+		[]byte(currentPassword),
+		user.PasswordHash,
+	)
+	if err != nil {
+		return err
+	}
+
+	if !match {
 		return ErrCurrentPasswordWrong
 	}
 
 	// Prevent same password
-	if u.passwordHasher.VerifyPassword(newPassword, user.Password) {
+	same, _, err := u.passwordHasher.VerifyPassword(
+		[]byte(newPassword),
+		user.PasswordHash,
+	)
+	if err != nil {
+		return err
+	}
+
+	if same {
 		return ErrPasswordSameAsOld
 	}
 
@@ -147,5 +174,5 @@ func (u *passwordUsecase) Change(ctx context.Context, userID, currentPassword, n
 	if err != nil {
 		return ErrHashingPass
 	}
-	return u.userRepo.UpdatePassword(ctx, userID, hashedNew)
+	return u.userRepo.UpdatePassword(ctx, id, hashedNew)
 }

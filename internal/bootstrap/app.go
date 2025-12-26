@@ -10,7 +10,6 @@ import (
 	"github.com/dhanarrizky/Golang-template/internal/infrastructure/security"
 	authUC "github.com/dhanarrizky/Golang-template/internal/usecase/auth"
 	roleUC "github.com/dhanarrizky/Golang-template/internal/usecase/roles"
-	userUC "github.com/dhanarrizky/Golang-template/internal/usecase/user"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -21,7 +20,9 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// =====================
 	db := InitDatabase(cfg)
 	// redis := InitRedis(cfg)
-	tokenHasher := InitTokenHasher(cfg)
+	// codecHaser := InitPublicIdCodec(cfg)
+	// tokenVrifier := InitTokenVerifier(cfg)
+	// tokenGenerator := InitTokenGenerator(cfg)
 	passwordHasher := security.NewPasswordHasher(&security.PasswordConfig{
 		Memory:               cfg.Password.Memory,
 		Iterations:           cfg.Password.Iterations,
@@ -55,7 +56,7 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 
 	// Auth
 	loginAttemptRepo := authRepo.NewLoginAttemptRepository(db)
-	passwordResetTokenRepo := authRepo.NewPasswordResetTokenRepository(db)
+	// passwordResetTokenRepo := authRepo.NewPasswordResetTokenRepository(db)
 	// refreshTokenFamilyRepo := authRepo.NewRefreshTokenFamilyRepository(db)
 	refreshTokenRepo := authRepo.NewRefreshTokenRepository(db)
 	roleRepo := authRepo.NewRoleRepository(db)
@@ -66,26 +67,26 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 	// Usecases
 	// =====================
 
-	loginUC := authUC.NewLoginUsecase(
-		userRepo,
-		loginAttemptRepo,
-		sessionRepo,
-		refreshTokenRepo,
-		passwordHasher,
-		cfg.JWTSecret,
-		accessExp,
-		refreshExp,
-	)
+	// loginUC := authUC.NewLoginUsecase(
+	// 	userRepo,
+	// 	loginAttemptRepo,
+	// 	sessionRepo,
+	// 	refreshTokenRepo,
+	// 	passwordHasher,
+	// 	cfg.JWTSecret,
+	// 	accessExp,
+	// 	refreshExp,
+	// )
 
-	passwordUC := authUC.NewPasswordUsecase(
-		userRepo,
-		passwordResetTokenRepo,
-		refreshTokenRepo,
-		sessionRepo,
-		passwordHasher,
-		mailer,
-		accessExp,
-	)
+	// passwordUC := authUC.NewPasswordUsecase(
+	// 	userRepo,
+	// 	passwordResetTokenRepo,
+	// 	refreshTokenRepo,
+	// 	sessionRepo,
+	// 	passwordHasher,
+	// 	mailer,
+	// 	accessExp,
+	// )
 
 	sessionUC := authUC.NewSessionUsecase(
 		sessionRepo,
@@ -105,10 +106,10 @@ func InitHTTPApp(cfg *config.Config) *gin.Engine {
 		refreshExp,
 	)
 
-	userUC := userUC.NewUserUsecase(
-		userRepo,
-		sessionRepo,
-		refreshTokenRepo)
+	// userUC := userUC.NewUserUsecase(
+	// 	userRepo,
+	// 	sessionRepo,
+	// 	refreshTokenRepo)
 
 	// =====================
 	// HTTP Router

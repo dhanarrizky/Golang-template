@@ -16,8 +16,20 @@ type aesCodec struct {
 	key []byte
 }
 
-func NewPublicIDCodec(key []byte) ports.PublicIDCodec {
-	return &aesCodec{key: key}
+func NewPublicIDCodecFromBase64(keyBase64 string) (ports.PublicIDCodec, error) {
+	key, err := base64.StdEncoding.DecodeString(keyBase64)
+	if err != nil {
+		return nil, errors.New("invalid base64 AES key")
+	}
+
+	switch len(key) {
+	case 16, 24, 32:
+		// valid
+	default:
+		return nil, errors.New("AES key must be 16, 24, or 32 bytes")
+	}
+
+	return &aesCodec{key: key}, nil
 }
 
 func (a *aesCodec) Encode(id uint64) (string, error) {

@@ -75,6 +75,29 @@ func (r *userRepository) GetByEmailOrUsername(
 	return mapper.ToDomainUser(&m), nil
 }
 
+func (r *userRepository) GetList(
+	ctx context.Context,
+) ([]*domain.User, error) {
+
+	var models []model.User
+
+	err := r.db.WithContext(ctx).
+		Where("deleted_at IS NULL").
+		Order("created_at DESC").
+		Find(&models).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*domain.User, 0, len(models))
+	for _, m := range models {
+		users = append(users, mapper.ToDomainUser(&m))
+	}
+
+	return users, nil
+}
+
 func (r *userRepository) Create(
 	ctx context.Context,
 	user *domain.User,

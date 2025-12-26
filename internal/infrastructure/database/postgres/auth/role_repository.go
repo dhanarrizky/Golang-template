@@ -90,3 +90,20 @@ func (r *roleRepository) Update(
 	m := mapper.ToModelRole(role)
 	return r.db.WithContext(ctx).Save(m).Error
 }
+
+func (r *roleRepository) Delete(ctx context.Context, id uint64) error {
+	return r.db.WithContext(ctx).
+		Where("id = ?", id).
+		Delete(&domain.Role{}).Error
+}
+
+func (r *roleRepository) IsRoleUsed(ctx context.Context, id uint64) (bool, error) {
+	var count int64
+
+	err := r.db.WithContext(ctx).
+		Table("user_roles").
+		Where("role_id = ?", id).
+		Count(&count).Error
+
+	return count > 0, err
+}
