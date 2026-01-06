@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dhanarrizky/Golang-template/internal/delivery/http/dto"
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
 	authPorts "github.com/dhanarrizky/Golang-template/internal/ports/auth"
 	otherPorts "github.com/dhanarrizky/Golang-template/internal/ports/others"
@@ -19,9 +20,9 @@ var (
 )
 
 // type UserUsecase interface {
-// 	Register(ctx context.Context, username, email, password string) (*domain.User, error)
-// 	GetMe(ctx context.Context, userID string) (*domain.User, error)
-// 	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
+// 	Register(ctx context.Context, username, email, password string) (*dto.CreateUserResponse, error)
+// 	GetMe(ctx context.Context, userID string) (*dto.UserProfileResponse, error)
+// 	GetUserByID(ctx context.Context, userID string) (*dto.UserResponse, error)
 // 	UpdateProfile(ctx context.Context, userID, username string) error
 // 	UpdateUser(ctx context.Context, userID, username, email string) error // admin/full update
 // 	SoftDelete(ctx context.Context, userID string) error
@@ -29,12 +30,12 @@ var (
 // }
 
 type UserUsecase interface {
-	Register(ctx context.Context, username, email, password string) (*domain.User, error)
-	GetMe(ctx context.Context, userID string) (*domain.User, error)
-	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
+	Register(ctx context.Context, username, email, password string) (*dto.CreateUserResponse, error)
+	GetMe(ctx context.Context, userID string) (*dto.UserProfileResponse, error)
+	GetUserByID(ctx context.Context, userID string) (*dto.UserResponse, error)
 
 	// 🔹 NEW
-	GetList(ctx context.Context) ([]*domain.User, error)
+	GetList(ctx context.Context) ([]dto.UserResponse, error)
 
 	UpdateProfile(ctx context.Context, userID, username string) error
 	UpdateUser(ctx context.Context, userID, username, email string) error
@@ -67,7 +68,7 @@ func NewUserUsecase(
 }
 
 // ================= REGISTER =================
-func (u *userUsecase) Register(ctx context.Context, username, email, password string) (*domain.User, error) {
+func (u *userUsecase) Register(ctx context.Context, username, email, password string) (*dto.CreateUserResponse, error) {
 	if username == "" || email == "" || password == "" {
 		return nil, errors.New("username, email, and password are required")
 	}
@@ -97,12 +98,22 @@ func (u *userUsecase) Register(ctx context.Context, username, email, password st
 	}
 
 	// Kosongkan password sebelum return
-	user.PasswordHash = ""
-	return user, nil
+	encrypId, err := u.idCodec.Encode(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := dto.CreateUserResponse{
+		ID:       encrypId,
+		Email:    user.Email,
+		Username: user.Username,
+	}
+
+	return &result, nil
 }
 
 // ================= GET ME =================
-func (u *userUsecase) GetMe(ctx context.Context, userID string) (*domain.User, error) {
+func (u *userUsecase) GetMe(ctx context.Context, userID string) (*dto.UserProfileResponse, error) {
 	id, err := u.idCodec.Decode(userID)
 	if err != nil {
 		return nil, ErrDecode
@@ -112,12 +123,25 @@ func (u *userUsecase) GetMe(ctx context.Context, userID string) (*domain.User, e
 	if err != nil || user == nil {
 		return nil, ErrUserNotFound
 	}
-	user.PasswordHash = ""
-	return user, nil
+
+	encrypId, err := u.idCodec.Encode(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := dto.UserProfileResponse{
+		ID:            encrypId,
+		Email:         user.Email,
+		Username:      user.Username,
+		EmailVerified: user.EmailVerified,
+		CreatedAt:     user.CreatedAt,
+	}
+
+	return &result, nil
 }
 
 // ================= GET BY ID =================
-func (u *userUsecase) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+func (u *userUsecase) GetUserByID(ctx context.Context, userID string) (*dto.UserResponse, error) {
 	id, err := u.idCodec.Decode(userID)
 	if err != nil {
 		return nil, ErrDecode
@@ -127,24 +151,46 @@ func (u *userUsecase) GetUserByID(ctx context.Context, userID string) (*domain.U
 	if err != nil || user == nil {
 		return nil, ErrUserNotFound
 	}
-	user.PasswordHash = ""
-	return user, nil
+
+	encrypId, err := u.idCodec.Encode(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := dto.UserResponse{
+		ID:        encrypId,
+		Email:     user.Email,
+		Username:  user.Username,
+		CreatedAt: user.CreatedAt,
+	}
+
+	return &result, nil
 }
 
 // ================= GET LIST (admin) =================
-func (u *userUsecase) GetList(ctx context.Context) ([]*domain.User, error) {
+func (u *userUsecase) GetList(ctx context.Context) ([]dto.UserResponse, error) {
 
 	users, err := u.userRepo.GetList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// kosongkan password hash sebelum return
-	for _, user := range users {
-		user.PasswordHash = ""
+	result := make([]dto.UserResponse, 0, len(users))
+	for _, usr := range users {
+		encrypId, err := u.idCodec.Encode(usr.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, dto.UserResponse{
+			ID:        encrypId,
+			Email:     usr.Email,
+			Username:  usr.Username,
+			CreatedAt: usr.CreatedAt,
+		})
 	}
 
-	return users, nil
+	return result, nil
 }
 
 // ================= UPDATE PROFILE (self) =================
@@ -215,6 +261,12 @@ func (u *userUsecase) SoftDelete(ctx context.Context, userID string) error {
 		_ = u.refreshRepo.RevokeByFamily(ctx, family.ID)
 		_ = u.refreshFamilyRepo.Revoke(ctx, family.ID)
 	}
+
+	err = u.userRepo.SoftDelete(ctx, id)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -233,6 +285,11 @@ func (u *userUsecase) PermanentDelete(ctx context.Context, userID string) error 
 	for _, family := range families {
 		_ = u.refreshRepo.RevokeByFamily(ctx, family.ID)
 		_ = u.refreshFamilyRepo.Revoke(ctx, family.ID)
+	}
+
+	err = u.userRepo.SoftDelete(ctx, id)
+	if err != nil {
+		return err
 	}
 
 	return nil

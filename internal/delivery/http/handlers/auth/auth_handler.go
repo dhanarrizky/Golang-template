@@ -48,12 +48,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.loginUsecase.Execute(
+	result, err := h.loginUsecase.Login(
 		c.Request.Context(),
 		req.Identifier,
 		req.Password,
-		req.DeviceName,
 	)
+
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 			Message: err.Error(),

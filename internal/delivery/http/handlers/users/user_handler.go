@@ -32,18 +32,8 @@ func (h *UserHandler) List(c *gin.Context) {
 		return
 	}
 
-	items := make([]dto.UserResponse, 0, len(users))
-	for _, u := range users {
-		items = append(items, dto.UserResponse{
-			ID:        u.ID,
-			Email:     u.Email,
-			Username:  u.Username,
-			CreatedAt: u.CreatedAt,
-		})
-	}
-
 	c.JSON(http.StatusOK, dto.UserListResponse{
-		Items: items,
+		Items: users,
 	})
 }
 
@@ -72,11 +62,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, dto.CreateUserResponse{
-		ID:       user.ID,
-		Email:    user.Email,
-		Username: user.Username,
-	})
+	c.JSON(http.StatusCreated, user)
 }
 
 // GET /users/me
@@ -89,13 +75,7 @@ func (h *UserHandler) Me(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.UserProfileResponse{
-		ID:            user.ID,
-		Email:         user.Email,
-		Username:      user.Username,
-		EmailVerified: user.EmailVerified,
-		CreatedAt:     user.CreatedAt,
-	})
+	c.JSON(http.StatusOK, user)
 }
 
 // GET /users/:id
@@ -108,12 +88,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Username:  user.Username,
-		CreatedAt: user.CreatedAt,
-	})
+	c.JSON(http.StatusOK, user)
 }
 
 // PUT /users/me
