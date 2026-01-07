@@ -2,16 +2,27 @@ package utils
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
+
 	"github.com/google/uuid"
 )
 
-func GenerateID() string {
+func GenerateUUID() string {
 	return uuid.New().String() // universal, semua versi kompatibel
+}
+
+func GenerateID() (uint64, error) {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint64(b[:]), nil
 }
 
 // ==========================
@@ -57,7 +68,7 @@ func VerifyID(signed string, secret string) (int64, bool) {
 // MAIN
 // ==========================
 // func main() {
-	// contoh BIGINT ID dari database
+// contoh BIGINT ID dari database
 // 	var originalID int64 = 123456789
 
 // 	fmt.Println("Original ID :", originalID)

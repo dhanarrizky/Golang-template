@@ -4,8 +4,9 @@ import "time"
 
 // UserSession merepresentasikan login session (bukan token)
 type UserSession struct {
-	ID     uint64
-	UserID uint64
+	ID       uint64
+	FamilyID uint64
+	UserID   uint64
 
 	IPAddress string
 	UserAgent string

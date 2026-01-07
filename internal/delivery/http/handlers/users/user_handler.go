@@ -24,7 +24,7 @@ func NewUserHandler(usecase user.UserUsecase, validate *validator.Validate) *Use
 
 // GET /users
 func (h *UserHandler) List(c *gin.Context) {
-	users, err := h.usecase.GetList(c.Request.Context())
+	users, err := h.usecase.get(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Message: "Failed to fetch users",
@@ -89,6 +89,31 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user)
+}
+
+// POST /users/me/verify-email
+func (h *UserHandler) VerifyEmail(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req dto.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "Invalid request"})
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "Validation failed"})
+		return
+	}
+
+	if err := h.usecase.UpdateProfile(c.Request.Context(), userID, req.Username); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.UpdateProfileResponse{
+		Message: "Profile updated successfully",
+	})
 }
 
 // PUT /users/me

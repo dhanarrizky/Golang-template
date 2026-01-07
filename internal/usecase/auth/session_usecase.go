@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	domain "github.com/dhanarrizky/Golang-template/internal/domain/entities/auth"
-	"github.com/dhanarrizky/Golang-template/internal/ports"
+	tokenPort "github.com/dhanarrizky/Golang-template/internal/ports/auth"
+	userPort "github.com/dhanarrizky/Golang-template/internal/ports/users"
 )
 
 var (
@@ -19,13 +20,13 @@ type SessionUsecase interface {
 }
 
 type sessionUsecase struct {
-	sessionRepo ports.UserSessionRepository
-	refreshRepo ports.RefreshTokenRepository
+	sessionRepo userPort.UserSessionRepository
+	refreshRepo tokenPort.RefreshTokenRepository
 }
 
 func NewSessionUsecase(
-	sessionRepo ports.UserSessionRepository,
-	refreshRepo ports.RefreshTokenRepository,
+	sessionRepo userPort.UserSessionRepository,
+	refreshRepo tokenPort.RefreshTokenRepository,
 ) SessionUsecase {
 	return &sessionUsecase{
 		sessionRepo: sessionRepo,

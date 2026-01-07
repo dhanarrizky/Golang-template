@@ -57,7 +57,7 @@ func (j *JWTSigner) GenerateAccessToken(
 func (j *JWTSigner) GenerateRefreshToken(userID string) (string, error) {
 	now := time.Now()
 
-	tokenID := utils.GenerateID() // wajib unique (jti)
+	tokenID := utils.GenerateUUID() // wajib unique (jti)
 
 	claims := jwt.MapClaims{
 		"sub": userID,

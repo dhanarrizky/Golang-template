@@ -103,29 +103,6 @@ func (u *roleUsecase) Update(ctx context.Context, roleID, name string) error {
 	return u.roleRepo.Update(ctx, exists)
 }
 
-// =============== ASSIGN =================
-
-// func (u *roleUsecase) AssignToUser(ctx context.Context, userID, roleID string) error {
-// 	id, err := u.idCodec.Decode(roleID)
-// 	if err != nil {
-// 		return ErrDecode
-// 	}
-
-// 	user, _ := u.userRepo.GetByID(ctx, id)
-// 	if user == nil {
-// 		return ErrUserNotFound
-// 	}
-
-// 	role, _ := u.roleRepo.GetByID(ctx, id)
-// 	if role == nil {
-// 		return ErrRoleNotFound
-// 	}
-
-// 	return u.roleRepo.AssignToUser(ctx, userID, roleID)
-// }
-
-// =============== DELETE =================
-
 func (u *roleUsecase) Delete(ctx context.Context, roleID string) error {
 	id, err := u.idCodec.Decode(roleID)
 	if err != nil {

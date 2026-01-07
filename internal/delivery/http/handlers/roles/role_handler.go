@@ -86,6 +86,26 @@ func (h *RoleHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.MessageResponse{Message: "Role updated"})
 }
 
+func (h *RoleHandler) AssignRole(c *gin.Context) {
+	var req dto.AssignRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "Invalid request"})
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "Validation failed"})
+		return
+	}
+
+	if err := h.usecase.AssignToUser(c.Request.Context(), req.UserID, req.RoleID); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MessageResponse{Message: "Role assigned to user"})
+}
+
 // DELETE /roles/:id
 func (h *RoleHandler) Delete(c *gin.Context) {
 	roleID := c.Param("id")

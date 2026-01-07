@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"time"
 
@@ -37,6 +36,8 @@ type passwordUsecase struct {
 	sessionRepo       userPorts.UserSessionRepository
 	passwordHasher    userPorts.PasswordHasher
 	codecHasher       otherPorts.PublicIDCodec
+	tokenGenerator    otherPorts.TokenGenerator
+	hmacTokenVerifier otherPorts.TokenVerifier
 	resetTokenExp     time.Duration
 	idCodec           otherPorts.PublicIDCodec
 }
@@ -74,8 +75,10 @@ func (u *passwordUsecase) Forgot(ctx context.Context, email string) error {
 		return err
 	}
 
-	plainToken := base64.URLEncoding.EncodeToString(raw)
-	hashedToken := u.codecHasher.Encode(plainToken)
+	_, hashedToken, err := u.tokenGenerator.Generate()
+	if err != nil {
+		return err
+	}
 
 	// ID:        uuid.NewString(),
 	// UserID:    user.ID,
